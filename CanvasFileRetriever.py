@@ -1,6 +1,20 @@
-import requests
+
+from docx import Document
 import json
 import os
+from pdfminer.high_level import extract_text
+from pptx import Presentation
+from PyPDF2 import PdfReader
+import requests
+from sentence_transformers import SentenceTransformer
+
+
+# Function to read in config file data
+def read_config(file_path):
+    with open(file_path, 'r') as file:
+        config_data = json.load(file)
+    return config_data
+
 
 # Function to get list of 10 classes
 def getClassList():
@@ -204,71 +218,120 @@ def getZoomPage(classId):
         return "ERROR"
 
 
+# Function for testing all functions
+def testAll():
 
-# Canvas API Access code
-API_TOKEN = ''
+    print()
 
-# Canvas base URL
-BASE_URL = 'https://canvas.uw.edu/api/v1/'
-
-# Set up headers
-headers = {
-    'Authorization': f'Bearer {API_TOKEN}'
-}
+    # # Get 10 classes from user
+    print("Test 1: Get 10 classes.")
+    print(getClassList())
+    print()
 
 
-
-# Function List
-#=========================================================================================#
-print()
-
-# # Get 10 classes from user
-# print("Test 1: Get 10 classes.")
-# print(getClassList())
-# print()
+    # # Get all classes from user
+    print("Test 2: Get all classes.")
+    print(getAllClasses())
+    print()
 
 
-# # Get all classes from user
-# print("Test 2: Get all classes.")
-# print(getAllClasses())
-# print()
+    # # Get all active classes from user
+    print("Test 3: Get all actively enrolled classes.")
+    print(getActiveClasses())
+    print()
 
 
-# # Get all active classes from user
-# print("Test 3: Get all actively enrolled classes.")
-# print(getActiveClasses())
-# print()
+    # # Get class files from my Databases class
+    print("Test 4: Get all class files from my Database class.")
+    print(getCourseMaterial(1714841))
+    print()
 
 
-# # Get class files from my Databases class
-# print("Test 4: Get all class files from my Database class.")
-# print(getCourseMaterial(1714841))
-# print()
+    # # Get class zoom page
+    print("Test 5: Get a classes zoom page.")
+    print(getZoomPage(1759311))
+    print()
 
 
-# # Get class zoom page
-# print("Test 5: Get a classes zoom page.")
-# print(getZoomPage(1759311))
-# print()
+    # Get class all pptx files from Databases class
+    print("Test 6: Get all pptx files from databases class.")
+    print(getCoursePPTXMaterial(1714841))
+    print()
 
 
-# # Get class all pptx files from Databases class
-# print("Test 6: Get all pptx files from databases class.")
-# print(getCoursePPTXMaterial(1714841))
-# print()
+    # Get class all pdf files from Databases class
+    print("Test 7: Get all pdf files from databases class.")
+    print(getCoursePDFMaterial(1714841))
+    print()
 
 
-# # Get class all pdf files from Databases class
-# print("Test 7: Get all pdf files from databases class.")
-# print(getCoursePDFMaterial(1714841))
-# print()
+    # Get class all docx files from Databases class
+    print("Test 8: Get all docx files from databases class.")
+    print(getCourseDOCXMaterial(1714841))
+    print()
 
 
-# Get class all docx files from Databases class
-print("Test 8: Get all docx files from databases class.")
-print(getCourseDOCXMaterial(1714841))
-print()
+# Function to pull text given a powerpoint path
+def extractTextFromPPTX(pptx_path):
+    prs = Presentation(pptx_path)
+    text = ""
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            if hasattr(shape, "text"):
+                text += shape.text + "\n"
+    return text
 
 
-#=========================================================================================#
+# Function to extract text given a pdf path
+def extractTextFromPdf(pdf_path):
+    text = extract_text(pdf_path)
+    return text.strip()
 
+
+# Function to extract text given a docx pat h
+def extractTextFromDocx(docx_path):
+    doc = Document(docx_path)
+    text = "\n".join([para.text for para in doc.paragraphs])
+    return text
+
+
+# Function to extract text given a txt path
+def extractTextFromTxt(txt_path):
+    with open(txt_path, "r", encoding="utf-8") as file:
+        return file.read()
+
+
+# MAIN
+def main():
+    config = read_config('config.json')
+
+    API_TOKEN = config["apitoken"]
+    BASE_URL = config["baseurl"]
+    headers = {
+        'Authorization': f'Bearer {API_TOKEN}'
+    }
+
+    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    embedding = model.encode(extractTextFromPdf("ICA17.pdf"))
+    
+
+    print()
+    print("[TEST] : Encoding ICA17.pdf: ")
+
+    #=========================
+    #print(extractTextFromPPTX("slides.pptx"))
+    #print(extractTextFromDocx("1_CreateTeam.docx"))
+    #print(extractTextFromPdf("ICA17.pdf"))
+
+    # print("Extracting text from txt. Filename: 'tester.txt'.")
+    # print()
+    # print(extractTextFromTxt("tester.txt"))
+
+    print(embedding)
+    print()
+
+
+
+
+if __name__ == "__main__":
+    main()
