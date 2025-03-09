@@ -1,39 +1,20 @@
 
 from docx import Document
-import json
 import os
 from pdfminer.high_level import extract_text
 from pptx import Presentation
 from PyPDF2 import PdfReader
-import requests
 from sentence_transformers import SentenceTransformer
+from utils import *
 
 
-# Function to read in config file data
-def read_config(file_path):
-    with open(file_path, 'r') as file:
-        config_data = json.load(file)
-    return config_data
+API_TOKEN = ""
+BASE_URL = ""
+headers = ""
 
-
-# Function to get list of 10 classes
-def getClassList():
-    # Get list of courses
-    response = requests.get(f'{BASE_URL}courses', headers=headers)
-
-    # Check if request was successful
-    if response.status_code == 200:
-        courses = response.json()
-        with open("ClassList10.json", "w") as file:
-            json.dump(courses, file, indent=4)  
-        return "Successful"
-    else:
-        print(f"Error: {response.status_code}, {response.text}")
-        return "ERROR"
-    
 
 # Function to get list of all classes
-def getAllClasses():
+def getAllClasses(BASE_URL, headers):
     # Get list of courses
     response = requests.get(f'{BASE_URL}courses?per_page=100', headers=headers)
 
@@ -49,7 +30,7 @@ def getAllClasses():
     
 
 # Function to get list of all classes still enrolled in
-def getActiveClasses():
+def getActiveClasses(BASE_URL, headers):
     # Get list of courses
     response = requests.get(f'{BASE_URL}courses?per_page=100&enrollment_state=active', headers=headers)
 
@@ -65,7 +46,7 @@ def getActiveClasses():
     
 
 # Function to get list of files in given class
-def getCourseMaterial(classId):
+def listCourseMaterial(classId, BASE_URL, headers):
     # Get course files
     response = requests.get(f'{BASE_URL}courses/{classId}/files?per_page=100', headers=headers)
 
@@ -83,10 +64,10 @@ def getCourseMaterial(classId):
     
 
 # Function to get list of pptx files in given class
-def getCoursePPTXMaterial(classId):
+def getCoursePPTXMaterial(classId, BASE_URL, headers):
 
     # Get all class files. Result located in files.json
-    result = getCourseMaterial(classId)
+    result = listCourseMaterial(classId, BASE_URL, headers)
 
     if result == "ERROR":
         return print(f"ERROR: Retrieveing all files from {classId}. Ensure getCourseMaterial() ran successfully.")
@@ -122,10 +103,10 @@ def getCoursePPTXMaterial(classId):
 
 
 # Function to get list of pdf files in given class
-def getCoursePDFMaterial(classId):
+def getCoursePDFMaterial(classId, BASE_URL, headers):
 
     # Get all class files. Result located in files.json
-    result = getCourseMaterial(classId)
+    result = listCourseMaterial(classId, BASE_URL, headers)
 
     if result == "ERROR":
         return print(f"ERROR: Retrieveing all files from {classId}. Ensure getCourseMaterial() ran successfully.")
@@ -161,10 +142,10 @@ def getCoursePDFMaterial(classId):
 
 
 # Function to get list of DOCX files in given class
-def getCourseDOCXMaterial(classId):
+def getCourseDOCXMaterial(classId, BASE_URL, headers):
 
     # Get all class files. Result located in files.json
-    result = getCourseMaterial(classId)
+    result = listCourseMaterial(classId, BASE_URL, headers)
 
     if result == "ERROR":
         return print(f"ERROR: Retrieveing all files from {classId}. Ensure getCourseMaterial() ran successfully.")
@@ -197,25 +178,6 @@ def getCourseDOCXMaterial(classId):
                 print(f"ERROR: Failed to download {filename}. Status code: {response.status_code}")
         else:
             print(f"Skipping file {filename}: No download URL found.")
-
-
-# !- DOES NOT WORK -! #
-# Function to get zoom page for a specific class
-def getZoomPage(classId):
-    # Get list of courses
-    response = requests.get(f'{BASE_URL}courses/{classId}/external_tools/95443', headers=headers)
-
-    # Check if request was successful
-    if response.status_code == 200:
-        courses = response.json()
-        with open("result.json", "w") as file:
-            json.dump(courses, file, indent=4)  
-        return "Successful"
-    else:
-        errorPage = response.text
-        with open("result.json", "w") as file:
-            file.write(errorPage)
-        return "ERROR"
 
 
 # Function for testing all functions
@@ -288,7 +250,7 @@ def extractTextFromPdf(pdf_path):
     return text.strip()
 
 
-# Function to extract text given a docx pat h
+# Function to extract text given a docx path
 def extractTextFromDocx(docx_path):
     doc = Document(docx_path)
     text = "\n".join([para.text for para in doc.paragraphs])
@@ -311,8 +273,8 @@ def main():
         'Authorization': f'Bearer {API_TOKEN}'
     }
 
-    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-    embedding = model.encode(extractTextFromPdf("ICA17.pdf"))
+    # model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    # embedding = model.encode(extractTextFromPdf("ICA17.pdf"))
     
 
     print()
@@ -327,7 +289,9 @@ def main():
     # print()
     # print(extractTextFromTxt("tester.txt"))
 
-    print(embedding)
+    get10ClassList(BASE_URL, headers)
+
+    # print(embedding)
     print()
 
 
