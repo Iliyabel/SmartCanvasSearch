@@ -79,11 +79,19 @@ def listCourseMaterial(classId, BASE_URL, headers):
             os.makedirs(path)
 
         fileLocation = path + "/files.json"
-        
+
         with open(fileLocation, "w") as file:
             json.dump(courses, file, indent=4)  
         return "Successful"
     else:
+
+        path = "Courses/" + str(classId)
+
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        fileLocation = path + "/files.json"
+
         errorPage = response.text
         with open(fileLocation, "w") as file:
             file.write(errorPage)
