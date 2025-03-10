@@ -8,7 +8,7 @@ def testAll():
 
     # # Get 10 classes from user
     print("Test 1: Get 10 classes.")
-    print(getClassList())
+    print(get10ClassList())
     print()
 
 
@@ -26,30 +26,24 @@ def testAll():
 
     # # Get class files from my Databases class
     print("Test 4: Get all class files from my Database class.")
-    print(getCourseMaterial(1714841))
-    print()
-
-
-    # # Get class zoom page
-    print("Test 5: Get a classes zoom page.")
-    print(getZoomPage(1759311))
+    print(listCourseMaterial(1714841))
     print()
 
 
     # Get class all pptx files from Databases class
-    print("Test 6: Get all pptx files from databases class.")
+    print("Test 5: Get all pptx files from databases class.")
     print(getCoursePPTXMaterial(1714841))
     print()
 
 
     # Get class all pdf files from Databases class
-    print("Test 7: Get all pdf files from databases class.")
+    print("Test 6: Get all pdf files from databases class.")
     print(getCoursePDFMaterial(1714841))
     print()
 
 
     # Get class all docx files from Databases class
-    print("Test 8: Get all docx files from databases class.")
+    print("Test 7: Get all docx files from databases class.")
     print(getCourseDOCXMaterial(1714841))
     print()
 
