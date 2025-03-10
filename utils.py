@@ -3,9 +3,14 @@ import os
 from pdfminer.high_level import extract_text
 from pptx import Presentation
 from PyPDF2 import PdfReader
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, util
 import json
 import requests
+import numpy as np
+import nltk
+
+
+nltk.download('punkt_tab')
 
 
 # Function to read in config file data
@@ -75,6 +80,7 @@ def listCourseMaterial(classId, BASE_URL, headers):
 
         path = "Courses/" + str(classId)
 
+        # Make file for courseid if it does not exist
         if not os.path.exists(path):
             os.makedirs(path)
 
@@ -87,6 +93,7 @@ def listCourseMaterial(classId, BASE_URL, headers):
 
         path = "Courses/" + str(classId)
 
+        # Make file for courseid if it does not exist
         if not os.path.exists(path):
             os.makedirs(path)
 
@@ -243,4 +250,32 @@ def extractTextFromDocx(docx_path):
 def extractTextFromTxt(txt_path):
     with open(txt_path, "r", encoding="utf-8") as file:
         return file.read()
+
+
+# Function to perform semantic chunking based on given text
+def semantic_chunking(text, similarity_threshold=0.6):
+
+    sentences = nltk.sent_tokenize(text)
+
+    # Encode text
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    sentence_embeddings = model.encode(sentences)
+
+    chunks = []
+    current_chunk = [sentences[0]]
+    current_embedding = sentence_embeddings[0]
+
+    for i in range(1, len(sentences)):
+        similarity = util.cos_sim(current_embedding.reshape(1, -1), sentence_embeddings[i].reshape(1, -1)).item()
+
+        if similarity > similarity_threshold:
+            current_chunk.append(sentences[i])
+            current_embedding = np.mean([current_embedding, sentence_embeddings[i]], axis=0) #update the current embedding with the new average.
+        else:
+            chunks.append(" ".join(current_chunk))
+            current_chunk = [sentences[i]]
+            current_embedding = sentence_embeddings[i]
+    chunks.append(" ".join(current_chunk)) #append the last chunk.
+
+    return chunks
 

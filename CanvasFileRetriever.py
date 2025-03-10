@@ -66,10 +66,6 @@ def main():
 
     # model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
     # embedding = model.encode(extractTextFromPdf("ICA17.pdf"))
-    
-
-    print()
-    print("[TEST] : Encoding ICA17.pdf: ")
 
     #=========================
     #print(extractTextFromPPTX("slides.pptx"))
@@ -80,9 +76,21 @@ def main():
     # print()
     # print(extractTextFromTxt("tester.txt"))
 
-    listCourseMaterial(1714841, BASE_URL, headers)
-
     # print(embedding)
+
+    print()
+    print("[TEST Chunking] : Chunking ICA 17")
+
+
+    text = extractTextFromPdf("ICA17.pdf")
+
+
+    #print(semantic_chunking(text, similarity_threshold=0.6))
+
+    chunks = semantic_chunking(text)
+    for i, chunk in enumerate(chunks):
+        print(f"Chunk {i+1}: {chunk}")
+
     print()
 
 

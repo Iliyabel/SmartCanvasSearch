@@ -3,3 +3,6 @@ pip install python-pptx
 pip install pdfminer.six
 pip install PyPDF2
 pip install sentence_transformers
+pip install nltk
+pip install numpy
+pip install chromadb
