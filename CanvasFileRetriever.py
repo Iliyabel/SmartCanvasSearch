@@ -73,17 +73,18 @@ def main():
     # print(embedding)
 
     print()
-    print("[TEST Chunking] : Chunking ICA 17")
+    #print("[TEST Chunking] : Chunking ICA 17")
+    print("[TEST PDF Extraction] : Downloading all pdfs from course:1714841, Databases.")
 
+    #text = extractTextFromPdf("ICA17.pdf")
 
-    text = extractTextFromPdf("ICA17.pdf")
-
+    getCoursePPTXMaterial(1714841, BASE_URL, headers)
 
     #print(semantic_chunking(text, similarity_threshold=0.6))
 
-    chunks = semantic_chunking(text)
-    for i, chunk in enumerate(chunks):
-        print(f"Chunk {i+1}: {chunk}")
+    # chunks = semantic_chunking(text)
+    # for i, chunk in enumerate(chunks):
+    #     print(f"Chunk {i+1}: {chunk}")
 
     print()
 

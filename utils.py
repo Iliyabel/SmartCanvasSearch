@@ -10,7 +10,7 @@ import numpy as np
 import nltk
 
 
-nltk.download('punkt_tab')
+#nltk.download('punkt_tab')
 
 
 # Function to read in config file data
@@ -151,15 +151,23 @@ def getCoursePDFMaterial(classId, BASE_URL, headers):
     result = listCourseMaterial(classId, BASE_URL, headers)
 
     if result == "ERROR":
-        return print(f"ERROR: Retrieveing all files from {classId}. Ensure getCourseMaterial() ran successfully.")
+        return print(f"ERROR: Retrieveing all files from {classId}. Ensure listCourseMaterial() ran successfully.")
     
+    path = "Courses/" + str(classId)
+
+    # Make file for courseid if it does not exist
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    fileLocation = path + "/files.json"
+
     # Check if file exists.
-    if not os.path.exists('files.json'):
-        print("ERROR: 'files.json' not found. Ensure getCourseMaterial() ran successfully.")
+    if not os.path.exists(fileLocation):
+        print("ERROR: 'files.json' not found. Ensure listCourseMaterial() ran successfully.")
         return
 
     # Read from files.json
-    with open('files.json', 'r') as file:
+    with open(fileLocation, 'r') as file:
         files = json.load(file)
 
 
