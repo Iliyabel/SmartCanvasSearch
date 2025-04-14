@@ -1,0 +1,19 @@
+version: '3.4'
+services:
+  weaviate:
+    command:
+    - --host
+    - 0.0.0.0
+    - --port
+    - '8080'
+    - --scheme
+    - http
+    image: cr.weaviate.io/semitechnologies/weaviate:1.30.0
+    ports:
+    - 8080:8080
+    - 50051:50051 # For gRPC
+    volumes:
+    - weaviate_data:/var/lib/weaviate
+
+volumes:
+  weaviate_data:
