@@ -1,0 +1,12 @@
+Important Commands
+
+
+    1. Start and close virtual Environment
+
+        -bash-
+        $source venv/Scripts/Activate
+
+        $deactivate
+    
+
+

@@ -73,5 +73,5 @@ def create_schema(client):
 
 # Deletes schema. For debugging.
 def delete_schema(client):
-    client.collections.delete(client.collections.Course)
+    client.collections.delete_all()
     print("Schema deleted.")

@@ -287,3 +287,27 @@ def semantic_chunking(text, similarity_threshold=0.6):
 
     return chunks
 
+
+# Load data from courses from a json list of classes.
+def load_courses(json_data):
+    print ({course["id"]: {
+        "name": course["name"],
+        "course_code": course["course_code"],
+        "start_date": course["start_at"],
+        "end_date": course["end_at"],
+        "uuid": course["uuid"]
+    } for course in json_data})
+
+
+# Load files from files.json and extract important file info.
+def extract_file_metadata(file_json, course_id=None):
+    return {
+        "file_id": file_json["id"],
+        "display_name": file_json["display_name"],
+        "url": file_json["url"],
+        "size_bytes": file_json["size"],
+        "created_at": file_json["created_at"],
+        "mime_class": file_json.get("mime_class"),
+        "course_id": course_id,
+        "filename": file_json["filename"]
+    }
