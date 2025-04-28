@@ -180,3 +180,21 @@ def insert_courses_into_weaviate(client, json_file_path):
         # Check for failed objects
     if len(courses_collection.batch.failed_objects) > 0:
         print(f"Failed to import {len(courses_collection.batch.failed_objects)} course objects")
+
+
+def verify_objects_in_collection(client, collection_name):
+    """
+    Displays uuid and properties of 'collection_name' collection.
+
+    Args:
+        client (weaviate.Client): The Weaviate client instance.
+        collection_name (string weaviate.Client.collection): The Weaviate client collection name.
+    """
+    try:
+
+        collection = client.collections.get(collection_name)    
+        
+        for item in collection.iterator():
+            print(item.uuid, item.properties)
+    except Exception as e:
+        print(f"Error querying the database: {e}")
