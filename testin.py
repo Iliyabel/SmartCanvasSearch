@@ -1,7 +1,9 @@
 from utils import *
 
 
-with open("resources/ClassList.json") as f:
-    class_list = json.load(f)
+json_file_path = "resources/ClassList.json"  # Adjust the path as needed
+courses_data = prepare_courses_for_weaviate(json_file_path)
 
-print(load_courses(class_list))
+# Print the extracted data
+for course in courses_data:
+    print(course)

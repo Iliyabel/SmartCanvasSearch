@@ -299,6 +299,48 @@ def load_courses(json_data):
     } for course in json_data})
 
 
+def prepare_courses_for_weaviate(json_file_path):
+    """
+    Extracts course data from a JSON file and prepares it for insertion into a Weaviate database.
+
+    Args:
+        json_file_path (str): Path to the JSON file containing course data.
+
+    Returns:
+        list: A list of dictionaries containing extracted course data.
+    """
+    try:
+        # Load the JSON data
+        with open(json_file_path, 'r') as file:
+            courses = json.load(file)
+
+        print(f"Loaded {len(courses)} courses from {json_file_path}")
+
+        # Extract relevant fields
+        prepared_data = []
+        for course in courses:
+            if all(key in course for key in ["name", "course_code", "start_at", "end_at", "uuid"]):
+                prepared_data.append({
+                    "name": course["name"],
+                    "course_code": course["course_code"],
+                    "start_date": course["start_at"],
+                    "end_date": course["end_at"],
+                    "uuid": course["uuid"]
+                })
+
+        return prepared_data
+    
+    except FileNotFoundError:
+        print(f"Error: File not found at {json_file_path}")
+        return []
+    except json.JSONDecodeError:
+        print(f"Error: Failed to decode JSON from {json_file_path}")
+        return []
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return []
+
+
 # Load files from files.json and extract important file info.
 def extract_file_metadata(file_json, course_id=None):
     return {
