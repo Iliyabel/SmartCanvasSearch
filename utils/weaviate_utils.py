@@ -30,14 +30,14 @@ def create_schema(client):
         print("Schema already exists. Skipping creation.")
         return
     
-
+    # Add Course collection to schema
     schema.create(
         name="Course",
         properties=[
             Property(name="name", data_type=DataType.TEXT),
             Property(name="course_code", data_type=DataType.TEXT),
-            Property(name="start_date", data_type=DataType.TEXT),
-            Property(name="end_date", data_type=DataType.TEXT),
+            Property(name="start_date", data_type=DataType.DATE),
+            Property(name="end_date", data_type=DataType.DATE),
             Property(name="uuid", data_type=DataType.TEXT),
             
         ],
@@ -53,14 +53,20 @@ def create_schema(client):
     )
 
 
+    # Add File collection to schema
     schema.create(
         name="File",
         properties=[
-            Property(name="fileName", data_type=DataType.TEXT),
-            Property(name="fileType", data_type=DataType.TEXT),
-            Property(name="uploadDate", data_type=DataType.DATE),
-            Property(name="fullText", data_type=DataType.TEXT),
-            #Property(name="belongsTo", data_type=wvcc.DataType.REFERENCE, target_collection="Course"),
+            Property(name="file_id", data_type=DataType.INT),
+            Property(name="uuid", data_type=DataType.TEXT),
+            Property(name="display_name", data_type=DataType.TEXT),
+            Property(name="file_type", data_type=DataType.TEXT),
+            Property(name="url", data_type=DataType.TEXT),
+            Property(name="size_bytes", data_type=DataType.INT),
+            Property(name="created_at", data_type=DataType.DATE),
+            Property(name="modified_at", data_type=DataType.DATE),
+            Property(name="filename", data_type=DataType.TEXT),
+            Property(name="course_uuid", data_type=DataType.TEXT),
         ],
         description="A file belonging to a course",
         ##### MAYBE ADD REFERENCE WHILE INSERTING FILES ####
@@ -73,6 +79,7 @@ def create_schema(client):
     )
     
 
+    # Add Chunk collection to schema
     schema.create(
         name="Chunk",
         vectorizer_config=wvcc.Configure.Vectorizer.none(),
@@ -135,6 +142,54 @@ def prepare_courses_for_weaviate(json_file_path):
         return []
     
 
+def prepare_files_for_weaviate(json_file_path, course_uuid):
+    """
+    Extracts file data from a JSON file and prepares it for insertion into a Weaviate database.
+
+    Args:
+        json_file_path (str): Path to the JSON file containing file data.
+        course_uuid (str): UUID of the course to which the files belong.    
+        
+    Returns:
+        list: A list of dictionaries containing extracted file data.
+    """
+    try:
+        # Load the JSON data
+        with open(json_file_path, 'r') as file:
+            files = json.load(file)
+
+        print(f"Loaded {len(files)} files from {json_file_path}")
+
+        # Extract relevant fields
+        prepared_data = []
+        for file in files:
+            if all(key in file for key in ["id", "display_name", "url", "size", "created_at", "filename"]):
+                prepared_data.append({
+                    "file_id": file["id"],
+                    "uuid": file["uuid"],
+                    "display_name": file["display_name"],
+                    "file_type": file["mime_class"],
+                    "url": file["url"],
+                    "size_bytes": file["size"],
+                    "created_at": file["created_at"],
+                    "modified_at": file["modified_at"],
+                    "filename": file["filename"],
+                    "course_uuid": course_uuid
+                })
+
+        return prepared_data
+
+    except FileNotFoundError:
+        print(f"Error: File not found at {json_file_path}")
+        return []
+    except json.JSONDecodeError:
+        print(f"Error: Failed to decode JSON from {json_file_path}")
+        return []
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return []
+
+
 def insert_courses_into_weaviate(client, json_file_path):
     """
     Reads course data from a JSON file, prepares it, and inserts it into the Weaviate database.
@@ -149,17 +204,6 @@ def insert_courses_into_weaviate(client, json_file_path):
     if not courses:
         print("No courses to insert.")
         return
-
-    # # Insert each course into Weaviate
-    # for course in courses:
-    #     try:
-    #         client.data.create(
-    #             data_object=course,
-    #             class_name="Course"
-    #         )
-    #         print(f"Inserted course: {course['name']}")
-    #     except Exception as e:
-    #         print(f"Failed to insert course {course['name']}: {e}")
 
     courses_collection = client.collections.get("Course")
 
@@ -182,13 +226,54 @@ def insert_courses_into_weaviate(client, json_file_path):
         print(f"Failed to import {len(courses_collection.batch.failed_objects)} course objects")
 
 
+def insert_files_into_weaviate(client, json_file_path, course_uuid):
+    """
+    Reads file data from a JSON file, prepares it, and inserts it into the Weaviate database.
+
+    Args:
+        client (weaviate.Client): The Weaviate client instance.
+        json_file_path (str): Path to the JSON file containing file data.
+        course_uuid (str): UUID of the course to which the files belong.
+    """
+    # Prepare the file data
+    files = prepare_files_for_weaviate(json_file_path, course_uuid)
+
+    if not files:
+        print("No files to insert.")
+        return
+
+    files_collection = client.collections.get("File")
+
+    with files_collection.batch.dynamic() as batch:
+        for file in tqdm(files):
+            try:
+                # Add file object
+                batch.add_object(
+                    properties={
+                        "file_id": file["file_id"],
+                        "uuid": file["uuid"],
+                        "display_name": file["display_name"],
+                        "file_type": file["file_type"],
+                        "url": file["url"],
+                        "size_bytes": file["size_bytes"],
+                        "created_at": file["created_at"],
+                        "modified_at": file["modified_at"],
+                        "filename": file["filename"],
+                        "course_uuid": course_uuid
+                    },
+                )
+                print(f"Inserted file: {file['display_name']}")
+            except Exception as e:
+                print(f"Failed to insert file {file['display_name']}: {e}")
+
+
 def verify_objects_in_collection(client, collection_name):
     """
     Displays uuid and properties of 'collection_name' collection.
 
     Args:
         client (weaviate.Client): The Weaviate client instance.
-        collection_name (string weaviate.Client.collection): The Weaviate client collection name.
+        collection_name (str): The Weaviate client collection name.
     """
     try:
 
