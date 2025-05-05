@@ -54,6 +54,7 @@ def create_schema(client):
         #         target_collection="File"
         #     )
         # ]
+        uuid=generate_uuid5("Course"),
     )
 
 
@@ -71,7 +72,7 @@ def create_schema(client):
             Property(name="created_at", data_type=DataType.DATE),
             Property(name="modified_at", data_type=DataType.DATE),
             Property(name="filename", data_type=DataType.TEXT),
-            Property(name="course_uuid", data_type=DataType.TEXT),
+            Property(name="course_uuid", data_type=DataType.UUID),
         ],
         description="A file belonging to a course",
         ##### MAYBE ADD REFERENCE WHILE INSERTING FILES ####
@@ -200,7 +201,6 @@ def prepare_files_for_weaviate(json_file_path, course_uuid):
                 load_dotenv()  # Load environment variables from .env file
 
                 API_TOKEN = os.getenv("API_KEY")
-                BASE_URL = os.getenv("BASE_URL")
                 headers = {
                     'Authorization': f'Bearer {API_TOKEN}'
                 }
@@ -340,7 +340,7 @@ def insert_text_chunks_into_weaviate(client, course_uuid, file_uuid):
         course_uuid (str): UUID of the course to which the chunks belong.
     """
     # Path to the text file
-    text_file_path = "Courses/1714841_files1.json"  # Example path, replace with actual path
+    text_file_path = f'Courses/{course_uuid}/{file_uuid}'
 
     # Determine extraction method based on file type
     file_extension = text_file_path.split('.')[-1].lower()
