@@ -27,7 +27,7 @@ This application is intended for local use, allowing you to process and search y
 
 * **Python:** Programming language.
 * **Sentence Transformers:** Library for generating sentence embeddings.
-* **Weaviate or ChromaDB:** Local vector database.
+* **Weaviate:** Local vector database.
 * **Canvas API:** For retrieving course files.
 * **NLTK:** Natural Language Toolkit for text processing.
 * **Requests:** For making HTTP requests.
@@ -47,7 +47,7 @@ This application is intended for local use, allowing you to process and search y
 
     ```bash
     python -m venv venv
-    source venv/bin/activate  # On macOS/Linux
+    source venv/Scripts/Activate  # On macOS/Linux
     venv\Scripts\activate  # On Windows
     ```
 
@@ -63,13 +63,12 @@ This application is intended for local use, allowing you to process and search y
     python -m nltk.downloader punkt_tab
     ```
 
-5.  **Weaviate (Optional):**
-    * If you are using Weaviate you will need to install docker, and then run the docker command provided in the code.
-    * If you are using ChromaDB, no additional steps are needed.
-
+5.  **Weaviate**
+    * You will need to install docker, and then run the docker command provided in the code.
+    
 6.  **Canvas API Credentials:**
     * Obtain your Canvas API credentials (API URL and API key) from your Canvas instance.
-    * Add them to your configuration file or environment variables.
+    * Add them to your environment variables file (.env) named 'APITOKEN'.
 
 
 ## Usage
@@ -77,11 +76,17 @@ This application is intended for local use, allowing you to process and search y
 1.  **Configure Canvas API:**
     * Update the configuration file or environment variables with your Canvas API credentials.
 
-2.  **Run the Application:**
+2.  **Run Weaviate Database:**
+
+    ```bash
+    docker compose up
+    ```
+
+3.  **Run the Application:**
 
     ```bash
     python CanvasFileRetriever.py
     ```
 
-3.  **Interact with the Application:**
+4.  **Interact with the Application:**
     * The application will guide you through the process of selecting a course and asking questions.
