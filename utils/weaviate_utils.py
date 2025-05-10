@@ -4,9 +4,9 @@ from weaviate.classes.config import Property, DataType, ReferenceProperty
 from weaviate.util import generate_uuid5
 import json
 import os
-from tqdm import tqdm
 from general_utils import extractTextFromPdf, extractTextFromPPTX, extractTextFromDocx, extractTextFromTxt, semantic_chunking, downloadCourseFile
 from dotenv import load_dotenv
+from cprint import print_header, print_status, print_warning
 
 
 
@@ -16,12 +16,12 @@ def create_client(url="http://localhost:8080"):
         client = weaviate.connect_to_local()
 
         if client.is_ready() and client.is_live():
-            print(f"Connected to Weaviate at {url}")
+            print_status(f"Connected to Weaviate at {url}")
             return client
         else:
             raise Exception("Weaviate is not live/ready")
     except Exception as e:
-        print("Connection error:", str(e))
+        print_warning("Connection error:", str(e))
         return None
 
 
@@ -39,6 +39,7 @@ def create_schema(client):
         name="Course",
         properties=[
             Property(name="name", data_type=DataType.TEXT),
+            Property(name="course_id", data_type=DataType.INT),
             Property(name="course_code", data_type=DataType.TEXT),
             Property(name="start_date", data_type=DataType.DATE),
             Property(name="end_date", data_type=DataType.DATE),
@@ -54,7 +55,6 @@ def create_schema(client):
         #         target_collection="File"
         #     )
         # ]
-        uuid=generate_uuid5("Course"),
     )
 
 
@@ -72,7 +72,7 @@ def create_schema(client):
             Property(name="created_at", data_type=DataType.DATE),
             Property(name="modified_at", data_type=DataType.DATE),
             Property(name="filename", data_type=DataType.TEXT),
-            Property(name="course_uuid", data_type=DataType.UUID),
+            Property(name="course_id", data_type=DataType.INT),
         ],
         description="A file belonging to a course",
         ##### MAYBE ADD REFERENCE WHILE INSERTING FILES ####
@@ -94,20 +94,20 @@ def create_schema(client):
             Property(name="chunk_text", data_type=DataType.TEXT),
             Property(name="chunk_index", data_type=DataType.INT),
             Property(name="chunk_vector", data_type=DataType.INT_ARRAY),
-            Property(name="file_uuid", data_type=DataType.TEXT),
-            Property(name="course_uuid", data_type=DataType.TEXT),
+            Property(name="file_id", data_type=DataType.TEXT),
+            Property(name="course_id", data_type=DataType.TEXT),
             #Property(name="sourceFile", data_type=DataType.REFERENCE, target_collection="File"),
         ],
         description="A chunk of text from a file used for vector search",
     )
 
-    print("Schema created successfully!")
+    print_status("Schema created successfully!")
 
 
 # Deletes schema. For debugging.
 def delete_schema(client):
     client.collections.delete_all()
-    print("Schema deleted.")
+    print_status("Schema deleted.")
 
 
 def prepare_courses_for_weaviate(json_file_path):
@@ -133,6 +133,7 @@ def prepare_courses_for_weaviate(json_file_path):
             if all(key in course for key in ["name", "course_code", "start_at", "end_at", "uuid"]):
                 prepared_data.append({
                     "name": course["name"],
+                    "course_id": course["id"],
                     "course_code": course["course_code"],
                     "start_date": course["start_at"],
                     "end_date": course["end_at"],
@@ -140,10 +141,10 @@ def prepare_courses_for_weaviate(json_file_path):
                 })
 
                 # Check if a directory with the course UUID exists
-                course_directory = os.path.join("Courses", course["uuid"])
+                course_directory = os.path.join("Courses", str(course["id"]))
                 if not os.path.exists(course_directory):
                     os.makedirs(course_directory)
-                    print(f"Created directory for course UUID: {course['uuid']}")
+                    print(f"Created directory for course id: {course['id']}")
         
 
         return prepared_data
@@ -159,13 +160,13 @@ def prepare_courses_for_weaviate(json_file_path):
         return []
     
 
-def prepare_files_for_weaviate(json_file_path, course_uuid):
+def prepare_files_for_weaviate(json_file_path, course_id):
     """
     Extracts file data from a JSON file and prepares it for insertion into a Weaviate database.
 
     Args:
         json_file_path (str): Path to the JSON file containing file data.
-        course_uuid (str): UUID of the course to which the files belong.    
+        course_id (int): ID of the course to which the files belong.    
         
     Returns:
         list: A list of dictionaries containing extracted file data.
@@ -192,11 +193,11 @@ def prepare_files_for_weaviate(json_file_path, course_uuid):
                     "created_at": file["created_at"],
                     "modified_at": file["modified_at"],
                     "filename": file["filename"],
-                    "course_uuid": course_uuid
+                    "course_id": course_id
                 })
 
                 # Check if the course directory exists
-                course_directory = os.path.join("Courses", course_uuid)
+                course_directory = os.path.join("Courses", course_id)
         
                 load_dotenv()  # Load environment variables from .env file
 
@@ -269,17 +270,19 @@ def insert_courses_into_weaviate(client, json_file_path):
     courses_collection = client.collections.get("Course")
 
     with courses_collection.batch.dynamic() as batch:
-        for course in tqdm(courses):
+        for course in courses:
             
             # Add course object
             batch.add_object(
                 properties={
                     "name": course["name"],
+                    "course_id": course["course_id"],
                     "course_code": course["course_code"],
                     "start_date": course["start_date"],
                     "end_date": course["end_date"],
                     "uuid": course["uuid"]
                 },
+                uuid=generate_uuid5(course["course_id"])
             )
 
         # Check for failed objects
@@ -287,17 +290,17 @@ def insert_courses_into_weaviate(client, json_file_path):
         print(f"Failed to import {len(courses_collection.batch.failed_objects)} course objects")
 
 
-def insert_files_into_weaviate(client, json_file_path, course_uuid):
+def insert_files_into_weaviate(client, json_file_path, course_id):
     """
     Reads file data from a JSON file, prepares it, and inserts it into the Weaviate database.
 
     Args:
         client (weaviate.Client): The Weaviate client instance.
         json_file_path (str): Path to the JSON file containing file data.
-        course_uuid (str): UUID of the course to which the files belong.
+        course_id (int): ID of the course to which the files belong.
     """
     # Prepare the file data
-    files = prepare_files_for_weaviate(json_file_path, course_uuid)
+    files = prepare_files_for_weaviate(json_file_path, course_id)
 
     if not files:
         print("No files to insert.")
@@ -306,7 +309,7 @@ def insert_files_into_weaviate(client, json_file_path, course_uuid):
     files_collection = client.collections.get("File")
 
     with files_collection.batch.dynamic() as batch:
-        for file in tqdm(files):
+        for file in files:
             try:
                 # Add file object
                 batch.add_object(
@@ -321,7 +324,7 @@ def insert_files_into_weaviate(client, json_file_path, course_uuid):
                         "created_at": file["created_at"],
                         "modified_at": file["modified_at"],
                         "filename": file["filename"],
-                        "course_uuid": course_uuid
+                        "course_id": course_id
                     },
                 )
                 print(f"Inserted file: {file['display_name']}")
@@ -329,18 +332,18 @@ def insert_files_into_weaviate(client, json_file_path, course_uuid):
                 print(f"Failed to insert file {file['display_name']}: {e}")
 
 
-def insert_text_chunks_into_weaviate(client, course_uuid, file_uuid):
+def insert_text_chunks_into_weaviate(client, course_id, file_id):
     """
     Reads a text-based file, extracts text, chunks it semantically,
     and inserts the chunks into the Weaviate database.
 
     Args:
         client (weaviate.Client): The Weaviate client instance.
-        text_file_path (str): Path to the text-based file.
-        course_uuid (str): UUID of the course to which the chunks belong.
+        course_id (int): Path to the text-based file.
+        course_uuid (int): UUID of the course to which the chunks belong.
     """
     # Path to the text file
-    text_file_path = f'Courses/{course_uuid}/{file_uuid}'
+    text_file_path = f'Courses/{course_id}/{file_id}'
 
     # Determine extraction method based on file type
     file_extension = text_file_path.split('.')[-1].lower()
@@ -373,20 +376,20 @@ def insert_text_chunks_into_weaviate(client, course_uuid, file_uuid):
         return
 
     # Optional: prepare chunks for insertion
-    prepared_chunks = prepare_chunks_for_weaviate(chunks, course_uuid, file_uuid)
+    prepared_chunks = prepare_chunks_for_weaviate(chunks, course_id, file_id)
 
     chunks_collection = client.collections.get("Chunk")
 
     with chunks_collection.batch.dynamic() as batch:
-        for chunk in tqdm(prepared_chunks):
+        for chunk in prepared_chunks:
             try:
                 batch.add_object(
                     properties={
                         "chunk_text": chunk["chunk_text"],
                         "chunk_index": chunk["chunk_index"],
                         "chunk_vector": chunk["chunk_vector"],
-                        "file_uuid": chunk["source_file"],
-                        "course_uuid": chunk["course_uuid"]
+                        "file_id": chunk["source_file"],
+                        "course_id": chunk["course_id"]
                     },
                     uuid=chunk["uuid"]
                 )
