@@ -152,9 +152,8 @@ def downloadCourseFile(filename, download_url, file_path, headers):
 
     # Check if the request was successful
     if response.status_code == 200:
-        # Save the file locally
-        # Ensure the course directory exists
         
+        # Save the file locally
         with open(file_path, 'wb') as file:
             file.write(response.content)
         print(f"DOWNLOADED: {filename}")

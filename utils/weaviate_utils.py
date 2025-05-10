@@ -48,13 +48,6 @@ def create_schema(client):
         ],
         description="A Canvas course with relevant metadata",
         vectorizer_config=wvcc.Configure.Vectorizer.none(),
-        # MAYBE ADD REFERENCE WHILE INSERTING FILES
-        # references=[
-        #     ReferenceProperty(
-        #         name="hasFiles",
-        #         target_collection="File"
-        #     )
-        # ]
     )
 
 
@@ -75,30 +68,22 @@ def create_schema(client):
             Property(name="course_id", data_type=DataType.INT),
         ],
         description="A file belonging to a course",
-        ##### MAYBE ADD REFERENCE WHILE INSERTING FILES ####
-        # references=[
-        #     ReferenceProperty(
-        #         name="fromCourse",
-        #         target_collection="Course"
-        #     ),
-        # ]
+        vectorizer_config=wvcc.Configure.Vectorizer.none(),
     )
     
 
     # Add Chunk collection to schema
     schema.create(
         name="Chunk",
-        vectorizer_config=wvcc.Configure.Vectorizer.none(),
         properties=[
-            Property(name="uuid", data_type=DataType.TEXT),
             Property(name="chunk_text", data_type=DataType.TEXT),
             Property(name="chunk_index", data_type=DataType.INT),
             Property(name="chunk_vector", data_type=DataType.INT_ARRAY),
-            Property(name="file_id", data_type=DataType.TEXT),
-            Property(name="course_id", data_type=DataType.TEXT),
-            #Property(name="sourceFile", data_type=DataType.REFERENCE, target_collection="File"),
+            Property(name="file_id", data_type=DataType.INT),
+            Property(name="course_id", data_type=DataType.INT),
         ],
         description="A chunk of text from a file used for vector search",
+        vectorizer_config=wvcc.Configure.Vectorizer.none(),
     )
 
     print_status("Schema created successfully!")
@@ -197,7 +182,7 @@ def prepare_files_for_weaviate(json_file_path, course_id):
                 })
 
                 # Check if the course directory exists
-                course_directory = os.path.join("Courses", course_id)
+                course_directory = os.path.join("Courses", str(course_id))
         
                 load_dotenv()  # Load environment variables from .env file
 
@@ -228,14 +213,14 @@ def prepare_files_for_weaviate(json_file_path, course_id):
         return []
 
 
-def prepare_chunks_for_weaviate(chunks, course_uuid, source_file):
+def prepare_chunks_for_weaviate(chunks, course_id, file_id):
     """
     Prepares chunk data for insertion into a Weaviate database.
 
     Args:
         chunks (list): List of chunk strings.
-        course_uuid (str): UUID of the course to which the chunks belong.
-        source_file (str): The source file name.
+        course_id (int): ID of the course to which the chunks belong.
+        file_id (int): ID of source file.
 
     Returns:
         list: A list of dictionaries containing prepared chunk data.
@@ -243,11 +228,10 @@ def prepare_chunks_for_weaviate(chunks, course_uuid, source_file):
     prepared = []
     for idx, chunk in enumerate(chunks):
         prepared.append({
-            "uuid": generate_uuid5(chunk),
             "chunk_text": chunk,
             "chunk_index": idx,
-            "source_file": source_file,
-            "course_uuid": course_uuid
+            "file_id": file_id,
+            "course_id": course_id
         })
     return prepared
 
@@ -326,6 +310,7 @@ def insert_files_into_weaviate(client, json_file_path, course_id):
                         "filename": file["filename"],
                         "course_id": course_id
                     },
+                    uuid=generate_uuid5(file["file_id"])
                 )
                 print(f"Inserted file: {file['display_name']}")
             except Exception as e:
