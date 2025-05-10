@@ -8,8 +8,8 @@ client = create_client()
 
 if client:
     try:
-        create_schema(client)
-        insert_courses_into_weaviate(client, "resources/ClassList.json")
+        # create_schema(client)
+        # insert_courses_into_weaviate(client, "resources/ClassList.json")
         #verify_objects_in_collection(client, "Course")
 
 

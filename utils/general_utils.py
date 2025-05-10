@@ -154,12 +154,7 @@ def downloadCourseFile(filename, download_url, file_path, headers):
     if response.status_code == 200:
         # Save the file locally
         # Ensure the course directory exists
-        course_dir = file_path
-        if not os.path.exists(course_dir):
-            os.makedirs(course_dir)
-
-        # Save the file into the course directory
-        file_path = os.path.join(course_dir, filename)
+        
         with open(file_path, 'wb') as file:
             file.write(response.content)
         print(f"DOWNLOADED: {filename}")
