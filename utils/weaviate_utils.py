@@ -1,6 +1,7 @@
 import weaviate
 import weaviate.classes.config as wvcc
 from weaviate.classes.config import Property, DataType, ReferenceProperty
+from weaviate.classes.query import Filter
 from weaviate.util import generate_uuid5
 import json
 import os
@@ -381,6 +382,36 @@ def insert_text_chunks_into_weaviate(client, course_id, file_id):
                 print(f"Inserted chunk {chunk['chunk_index']} from {chunk['source_file']}")
             except Exception as e:
                 print(f"Failed to insert chunk {chunk['chunk_index']} from {chunk['source_file']}: {e}")
+
+
+def pull_files_from_weaviate(client, course_id):
+    """
+    Pulls files objects from Weaviate and saves them to the local filesystem.
+
+    Args:
+        client (weaviate.Client): The Weaviate client instance.
+        course_id (int): ID of the course to which the files belong.
+    """
+    # Get the course collection
+    collection = client.collections.get("File")
+
+    # Get the course object
+    files_response = collection.query.fetch_objects(
+        filters=Filter.by_property("course_id").equal(course_id)
+    )
+
+    # Check if the course exists
+    if not files_response:
+        print(f"Course with ID {course_id} not found.")
+        return
+
+
+    # print(f"Found {len(files_response.objects)} files for course {course_id}")
+    # for file_obj in files_response.objects:
+    #     print(f"File UUID: {file_obj.uuid}")
+    #     print(f"Filename: {file_obj.properties.get('filename')}")
+    #     print("---")
+    return files_response.objects
 
 
 def verify_objects_in_collection(client, collection_name):

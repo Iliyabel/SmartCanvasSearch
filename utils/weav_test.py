@@ -1,4 +1,4 @@
-from weaviate_utils import create_client, create_schema, insert_courses_into_weaviate, verify_objects_in_collection, insert_files_into_weaviate, generate_uuid5
+from weaviate_utils import create_client, create_schema, insert_courses_into_weaviate, verify_objects_in_collection, insert_files_into_weaviate, generate_uuid5, pull_files_from_weaviate
 from cprint import print_header
 
 print("")
@@ -8,10 +8,17 @@ client = create_client()
 
 if client:
     try:
-        create_schema(client)
+        #create_schema(client)
         # insert_courses_into_weaviate(client, "resources/ClassList.json")
         #verify_objects_in_collection(client, "Course")
 
+        objects = pull_files_from_weaviate(client, 1714841)
+
+        print(f"Found {len(objects)} files")
+        for file_obj in objects:
+            print(f"File UUID: {file_obj.uuid}")
+            print(f"Filename: {file_obj.properties.get('filename')}")
+            print("---")
 
         # insert_files_into_weaviate(client, "Courses/1714841/files1.json", 1714841)    
         # verify_objects_in_collection(client, "File")
