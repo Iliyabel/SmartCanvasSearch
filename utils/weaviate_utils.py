@@ -29,6 +29,28 @@ def create_client(url="http://localhost:8080"):
 
 # Creates the weaviate schema
 def create_schema(client):
+    """
+    Creates the schema for Weaviate database.
+    The schema consists of three collections: Course, File, and Chunk.
+    Each collection has its own properties and vectorizer configuration.
+
+    Args:
+        client (weaviate.Client): The Weaviate client instance.
+
+    Returns:
+        None
+
+    Raises:
+        Exception: If the schema creation fails.
+
+    This function creates the schema for the Weaviate database, including collections for courses, files, and chunks.
+    It checks if the schema already exists before attempting to create it. If the schema is created successfully,
+    it prints a success message. If the schema already exists, it skips the creation process.
+    The schema includes the following collections:
+        - Course: Contains metadata about courses.
+        - File: Contains metadata about files associated with courses.
+        - Chunk: Contains text chunks extracted from files for vector search.
+    """
     schema = client.collections
     
     # Check if schema is already created
@@ -92,6 +114,15 @@ def create_schema(client):
 
 # Deletes schema. For debugging.
 def delete_schema(client):
+    """
+    Deletes the schema for Weaviate database.
+
+    Args:
+        client (weaviate.Client): The Weaviate client instance.
+
+    Returns:
+        None
+    """
     client.collections.delete_all()
     print_status("Schema deleted.")
 
@@ -214,14 +245,12 @@ def prepare_files_for_weaviate(json_file_path: str, course_id: int):
         return []
 
 
-def prepare_chunks_for_weaviate(chunks, course_id: int, file_id: int):
+def prepare_chunks_for_weaviate(chunks: list[str]):
     """
     Prepares chunk data for insertion into a Weaviate database.
 
     Args:
-        chunks (list): List of chunk strings.
-        course_id (int): ID of the course to which the chunks belong.
-        file_id (int): ID of source file.
+        chunks (list[str]): List of chunk strings.
 
     Returns:
         list: A list of dictionaries containing prepared chunk data.
@@ -380,7 +409,7 @@ def insert_text_chunks_into_weaviate(client, course_id: int, file_name: str, fil
         return
 
     # Prepare chunks for insertion
-    prepared_chunks = prepare_chunks_for_weaviate(chunks, course_id, file_id)
+    prepared_chunks = prepare_chunks_for_weaviate(chunks)
 
     # Get the Chunk collection
     chunks_collection = client.collections.get("Chunk")
@@ -405,7 +434,7 @@ def insert_text_chunks_into_weaviate(client, course_id: int, file_name: str, fil
                 print(f"Failed to insert chunk {chunk['chunk_index']} from {file_name}: {e}")
 
 
-def pull_files_from_weaviate(client, course_id):
+def pull_files_from_weaviate(client, course_id: int):
     """
     Pulls files objects from Weaviate and saves them to the local filesystem.
 
@@ -426,16 +455,10 @@ def pull_files_from_weaviate(client, course_id):
         print(f"Course with ID {course_id} not found.")
         return
 
-
-    # print(f"Found {len(files_response.objects)} files for course {course_id}")
-    # for file_obj in files_response.objects:
-    #     print(f"File UUID: {file_obj.uuid}")
-    #     print(f"Filename: {file_obj.properties.get('filename')}")
-    #     print("---")
     return files_response.objects
 
 
-def verify_objects_in_collection(client, collection_name):
+def verify_objects_in_collection(client, collection_name: str):
     """
     Displays uuid and properties of 'collection_name' collection.
 
