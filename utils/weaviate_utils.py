@@ -5,11 +5,12 @@ from weaviate.classes.query import Filter
 from weaviate.util import generate_uuid5
 import json
 import os
-from general_utils import extractTextFromPdf, extractTextFromPPTX, extractTextFromDocx, extractTextFromTxt, semantic_chunking, downloadCourseFile
+from general_utils import extractTextFromPdf, extractTextFromPPTX, extractTextFromDocx, extractTextFromTxt, semantic_chunking, downloadCourseFile, encode_text
+import nltk
 from dotenv import load_dotenv
 from cprint import print_header, print_status, print_warning
 
-
+nltk.download('punkt_tab')
 
 # Initialize and return a weaviate client.
 def create_client(url="http://localhost:8080"):
@@ -79,7 +80,6 @@ def create_schema(client):
         properties=[
             Property(name="chunk_text", data_type=DataType.TEXT),
             Property(name="chunk_index", data_type=DataType.INT),
-            Property(name="chunk_vector", data_type=DataType.INT_ARRAY),
             Property(name="file_id", data_type=DataType.INT),
             Property(name="course_id", data_type=DataType.INT),
         ],
@@ -96,7 +96,7 @@ def delete_schema(client):
     print_status("Schema deleted.")
 
 
-def prepare_courses_for_weaviate(json_file_path):
+def prepare_courses_for_weaviate(json_file_path: str):
     """
     Extracts course data from a JSON file and prepares it for insertion into a Weaviate database.
 
@@ -146,7 +146,7 @@ def prepare_courses_for_weaviate(json_file_path):
         return []
     
 
-def prepare_files_for_weaviate(json_file_path, course_id):
+def prepare_files_for_weaviate(json_file_path: str, course_id: int):
     """
     Extracts file data from a JSON file and prepares it for insertion into a Weaviate database.
 
@@ -214,7 +214,7 @@ def prepare_files_for_weaviate(json_file_path, course_id):
         return []
 
 
-def prepare_chunks_for_weaviate(chunks, course_id, file_id):
+def prepare_chunks_for_weaviate(chunks, course_id: int, file_id: int):
     """
     Prepares chunk data for insertion into a Weaviate database.
 
@@ -230,14 +230,12 @@ def prepare_chunks_for_weaviate(chunks, course_id, file_id):
     for idx, chunk in enumerate(chunks):
         prepared.append({
             "chunk_text": chunk,
-            "chunk_index": idx,
-            "file_id": file_id,
-            "course_id": course_id
+            "chunk_index": idx
         })
     return prepared
 
 
-def insert_courses_into_weaviate(client, json_file_path):
+def insert_courses_into_weaviate(client, json_file_path: str):
     """
     Reads course data from a JSON file, prepares it, and inserts it into the Weaviate database.
 
@@ -252,8 +250,10 @@ def insert_courses_into_weaviate(client, json_file_path):
         print("No courses to insert.")
         return
 
+    # Get the Course collection
     courses_collection = client.collections.get("Course")
 
+    # Go through each course and add it to the collection
     with courses_collection.batch.dynamic() as batch:
         for course in courses:
             
@@ -275,7 +275,7 @@ def insert_courses_into_weaviate(client, json_file_path):
         print(f"Failed to import {len(courses_collection.batch.failed_objects)} course objects")
 
 
-def insert_files_into_weaviate(client, json_file_path, course_id):
+def insert_files_into_weaviate(client, json_file_path: str, course_id: int):
     """
     Reads file data from a JSON file, prepares it, and inserts it into the Weaviate database.
 
@@ -291,48 +291,65 @@ def insert_files_into_weaviate(client, json_file_path, course_id):
         print("No files to insert.")
         return
 
+    # Get the File collection
     files_collection = client.collections.get("File")
 
+    # Go through each file and add it to the collection
     with files_collection.batch.dynamic() as batch:
         for file in files:
-            try:
-                # Add file object
-                batch.add_object(
-                    properties={
-                        "file_id": file["file_id"],
-                        "uuid": file["uuid"],
-                        "display_name": file["display_name"],
-                        "file_type": file["file_type"],
-                        "file_path": file["file_path"],
-                        "url": file["url"],
-                        "size_bytes": file["size_bytes"],
-                        "created_at": file["created_at"],
-                        "modified_at": file["modified_at"],
-                        "filename": file["filename"],
-                        "course_id": course_id
-                    },
-                    uuid=generate_uuid5(file["file_id"])
-                )
-                print(f"Inserted file: {file['display_name']}")
-            except Exception as e:
-                print(f"Failed to insert file {file['display_name']}: {e}")
+            # Check if the file type is supported
+            if file["file_type"] in ["pdf", "ppt", "doc", "text"]:
+                try:
+                    # Add file object
+                    batch.add_object(
+                        properties={
+                            "file_id": file["file_id"],
+                            "uuid": file["uuid"],
+                            "display_name": file["display_name"],
+                            "file_type": file["file_type"],
+                            "file_path": file["file_path"],
+                            "url": file["url"],
+                            "size_bytes": file["size_bytes"],
+                            "created_at": file["created_at"],
+                            "modified_at": file["modified_at"],
+                            "filename": file["filename"],
+                            "course_id": course_id
+                        },
+                        uuid=generate_uuid5(file["file_id"])
+                    )
+                    print(f"Inserted file: {file['display_name']}")
+                except Exception as e:
+                    print(f"Failed to insert file {file['display_name']}: {e}")
+
+                # chunk the text and insert chunk into Weaviate
+                try:
+                    # Insert text chunks into Weaviate
+                    insert_text_chunks_into_weaviate(client, course_id, file["display_name"])
+
+                except Exception as e:
+                    print(f"Failed to insert file {file['display_name']}: {e}")
 
 
-def insert_text_chunks_into_weaviate(client, course_id, file_id):
+def insert_text_chunks_into_weaviate(client, course_id: int, file_name: str, file_id: int):
     """
     Reads a text-based file, extracts text, chunks it semantically,
     and inserts the chunks into the Weaviate database.
 
     Args:
         client (weaviate.Client): The Weaviate client instance.
-        course_id (int): Path to the text-based file.
-        course_uuid (int): UUID of the course to which the chunks belong.
+        course_id (int): ID of the course to which the file belongs.
+        file_name (str): Name of file.
+        file_id (int): ID of the file.
     """
     # Path to the text file
-    text_file_path = f'Courses/{course_id}/{file_id}'
+    text_file_path = f'Courses/{course_id}/{file_name}'
 
     # Determine extraction method based on file type
     file_extension = text_file_path.split('.')[-1].lower()
+
+
+    # Extract text from the file
+    text = ""
     
     try:
         if file_extension == 'pdf':
@@ -354,6 +371,7 @@ def insert_text_chunks_into_weaviate(client, course_id, file_id):
         print("No text extracted to insert.")
         return
 
+
     # Perform semantic chunking
     chunks = semantic_chunking(text)
 
@@ -361,11 +379,13 @@ def insert_text_chunks_into_weaviate(client, course_id, file_id):
         print("No chunks created from the text.")
         return
 
-    # Optional: prepare chunks for insertion
+    # Prepare chunks for insertion
     prepared_chunks = prepare_chunks_for_weaviate(chunks, course_id, file_id)
 
+    # Get the Chunk collection
     chunks_collection = client.collections.get("Chunk")
 
+    # Go through each chunk and add it to the collection
     with chunks_collection.batch.dynamic() as batch:
         for chunk in prepared_chunks:
             try:
@@ -373,15 +393,16 @@ def insert_text_chunks_into_weaviate(client, course_id, file_id):
                     properties={
                         "chunk_text": chunk["chunk_text"],
                         "chunk_index": chunk["chunk_index"],
-                        "chunk_vector": chunk["chunk_vector"],
-                        "file_id": chunk["source_file"],
-                        "course_id": chunk["course_id"]
+                        "file_id": file_id,
+                        "course_id": course_id,
+                        "file_name": file_name
                     },
-                    uuid=chunk["uuid"]
+                    uuid=generate_uuid5(chunk["chunk_index"] + file_id),
+                    vector=encode_text(chunk["chunk_text"])
                 )
-                print(f"Inserted chunk {chunk['chunk_index']} from {chunk['source_file']}")
+                print(f"Inserted chunk {chunk['chunk_index']} from {file_name}")
             except Exception as e:
-                print(f"Failed to insert chunk {chunk['chunk_index']} from {chunk['source_file']}: {e}")
+                print(f"Failed to insert chunk {chunk['chunk_index']} from {file_name}: {e}")
 
 
 def pull_files_from_weaviate(client, course_id):

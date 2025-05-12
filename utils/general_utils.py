@@ -279,6 +279,17 @@ def extractTextFromTxt(txt_path):
         return file.read()
 
 
+# Function to encode text using SentenceTransformer
+def encode_text(text):
+    # Load the model
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+
+    # Encode the text
+    embedding = model.encode(text)
+
+    return embedding
+
+
 # Function to perform semantic chunking based on given text
 def semantic_chunking(text, similarity_threshold=0.6):
 
