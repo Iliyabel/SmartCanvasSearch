@@ -2,6 +2,7 @@ import weaviate
 import weaviate.classes.config as wvcc
 from weaviate.classes.config import Property, DataType, ReferenceProperty
 from weaviate.classes.query import Filter
+import weaviate.classes.query as wq
 from weaviate.util import generate_uuid5
 import json
 import os
@@ -474,3 +475,29 @@ def verify_objects_in_collection(client, collection_name: str):
             print(item.uuid, item.properties)
     except Exception as e:
         print(f"Error querying the database: {e}")
+
+
+def search_weaviate(client, query: str, collection_name: str):
+    """
+    Searches for a query in the specified Weaviate collection.
+
+    Args:
+        client (weaviate.Client): The Weaviate client instance.
+        query (str): The search query.
+        collection_name (str): The name of the collection to search in.
+
+    Returns:
+        list: A list of search results.
+    """
+    try:
+        # Get the collection
+        collection = client.collections.get(collection_name)
+
+        # Encode the query into a vector embedding
+        querty_vector = encode_text(query)
+
+        results = collection.query.near_vector(near_vector=querty_vector, limit=5,  return_metadata=wq.MetadataQuery(distance=True))
+        return results
+    except Exception as e:
+        print(f"Error querying the database: {e}")
+        return []

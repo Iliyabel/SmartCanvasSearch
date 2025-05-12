@@ -30,8 +30,8 @@ if client:
 
         ############### Testing chunks ######################
 
-        wu.insert_text_chunks_into_weaviate(client, 1714841, "1_CreateTeam.docx", 114175018)
-        
+        #wu.insert_text_chunks_into_weaviate(client, 1714841, "1_CreateTeam.docx", 114175018)
+
         # text = wu.extractTextFromDocx("Courses/1714841/1_CreateTeam.docx")
         # chunks = wu.semantic_chunking(text)
 
@@ -39,6 +39,17 @@ if client:
         #     print(f"Chunk {i+1}: {chunk} encoding: {wu.encode_text(chunk)}")
 
         # wu.verify_objects_in_collection(client, "Chunk")
+
+        result = wu.search_weaviate(client, "how many words can my team name be", "chunk")
+        #print(f"Search result: {result}")
+
+        # Process the results
+        print(f"Found {len(result.objects)} results for query: 'how many words can my team name be'")
+        for obj in result.objects:
+            print(f"UUID: {obj.uuid}")
+            print(f"Properties: {obj.properties}")
+            print(f"Distance: {obj.metadata.distance}")
+            print("---")
 
 
 
