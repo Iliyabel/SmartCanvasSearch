@@ -1,4 +1,6 @@
 import sys
+import json
+import os
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -9,23 +11,56 @@ from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QIcon, QFont, QPalette, QColor
 
 
+# --- Configuration ---
+TOKEN_FILE = "canvas_token.txt" # File to store the Canvas token
+
+# --- Backend Placeholder Functions ---
+def save_token(token):
+    """Saves the token to a file."""
+    try:
+        with open(TOKEN_FILE, "w") as f:
+            f.write(token)
+        return True
+    except IOError:
+        print(f"Error: Could not save token to {TOKEN_FILE}")
+        return False
+
+def load_token():
+    """Loads the token from a file."""
+    if os.path.exists(TOKEN_FILE):
+        try:
+            with open(TOKEN_FILE, "r") as f:
+                return f.read().strip()
+        except IOError:
+            print(f"Error: Could not read token from {TOKEN_FILE}")
+            return None
+    return None
+
+
 class WelcomeScreen(QWidget):
+    """
+    A welcome screen that provides instructions on how to obtain a Canvas Access Token.
+    This screen is displayed when the application starts.
+    """
+    token_submitted = pyqtSignal(str) # Signal emitted when token is submitted
+
     def __init__(self):
         super().__init__()
         self.init_ui()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setContentsMargins(300, 100, 300, 100)
         layout.setSpacing(20)
 
         # Title
-        title_label = QLabel("Welcome to Canvas Course Query!")
+        title_label = QLabel("Welcome to Course Compass!")
         title_font = QFont()
         title_font.setPointSize(20)
         title_font.setBold(True)
         title_label.setFont(title_font)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_label.setContentsMargins(0, 0, 0, 30)
         layout.addWidget(title_label)
 
         # Introduction Text
@@ -60,6 +95,48 @@ class WelcomeScreen(QWidget):
         instructions_label.setFont(QFont("Arial", 11))
         layout.addWidget(instructions_label)
 
+        # Token Input
+        token_layout = QHBoxLayout()
+        token_label = QLabel("Canvas Access Token:")
+        token_label.setFont(QFont("Arial", 12))
+        self.token_input = QLineEdit()
+        self.token_input.setPlaceholderText("Paste your token here")
+        self.token_input.setEchoMode(QLineEdit.EchoMode.Password) # Hide token
+        self.token_input.setFont(QFont("Arial", 11))
+        token_layout.addWidget(token_label)
+        token_layout.addWidget(self.token_input)
+        layout.addLayout(token_layout)
+
+        # Status Label (for errors or success messages)
+        self.status_label = QLabel("")
+        self.status_label.setFont(QFont("Arial", 10))
+        self.status_label.setStyleSheet("color: red;") # Default to error color
+        layout.addWidget(self.status_label)
+
+        # Save Button
+        self.save_button = QPushButton("Save Token and Continue")
+        self.save_button.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        self.save_button.setMinimumHeight(40)
+        self.save_button.clicked.connect(self.on_save_clicked)
+        layout.addWidget(self.save_button)
+
+        layout.addStretch() # Pushes content to the top
+
+    def on_save_clicked(self):
+        token = self.token_input.text().strip()
+        if not token:
+            self.status_label.setText("Please enter an access token.")
+            self.status_label.setStyleSheet("color: red;")
+            return
+
+        if save_token(token):
+            self.status_label.setText("Token saved successfully!")
+            self.status_label.setStyleSheet("color: green;")
+            self.token_submitted.emit(token) # Emit signal with the token
+        else:
+            self.status_label.setText("Failed to save token. Check console for errors.")
+            self.status_label.setStyleSheet("color: red;")
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -82,20 +159,6 @@ class MainWindow(QMainWindow):
         """)
         self.setWindowIcon(QIcon("resources/icon.png"))
 
-        # # Main layout
-        # self.central_widget = QWidget()
-        # self.layout = QVBoxLayout(self.central_widget)
-
-        # # Create six buttons for class options
-        # self.buttons = []
-        # for i in range(1, 7):
-        #     button = QPushButton(f"Class {i}")
-        #     button.clicked.connect(self.handle_button_click)
-        #     self.layout.addWidget(button)
-        #     self.buttons.append(button)
-
-        # self.setCentralWidget(self.central_widget)
-
         self.stacked_widget = QStackedWidget()
         self.setCentralWidget(self.stacked_widget)
 
@@ -104,22 +167,6 @@ class MainWindow(QMainWindow):
 
         # Add screens to stacked widget
         self.stacked_widget.addWidget(self.welcome_screen) # Index 0
-
-
-    def handle_button_click(self):
-        # Get the button that was clicked
-        button = self.sender()
-        if button:
-            print(f"{button.text()} selected!")
-
-            # Clear the layout
-            for btn in self.buttons:
-                self.layout.removeWidget(btn)
-                btn.hide()
-
-            # Add the clicked button to the top
-            self.layout.addWidget(button)
-            button.show()
 
 
 if __name__ == '__main__':
