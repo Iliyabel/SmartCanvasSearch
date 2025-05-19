@@ -4,12 +4,55 @@ import os
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QLineEdit, QPushButton, QTextEdit, QStackedWidget,
-    QScrollArea, QFrame, QSizePolicy, QGraphicsDropShadowEffect
+    QLabel, QLineEdit, QPushButton, QStackedWidget,
+    QScrollArea, QSizePolicy, QGraphicsDropShadowEffect
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QIcon, QFont, QPalette, QColor
 
+
+class CourseSelectionScreen(QWidget):
+    course_selected = pyqtSignal(dict)  # Signal to send the selected course
+
+    def __init__(self):
+        super().__init__()
+        self.init_ui()
+
+    def init_ui(self):
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(50, 20, 50, 20)
+        self.main_layout.setSpacing(10)
+
+        # Title
+        title_label = QLabel("Select a Course")
+        title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.main_layout.addWidget(title_label)
+
+        # Placeholder for course buttons
+        self.course_buttons_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.course_buttons_layout)
+
+        # Load courses (temporary data for now)
+        self.load_courses()
+
+    def load_courses(self):
+        # Temporary data (replace with file-based fetching later)
+        courses = [
+            {"id": 1, "name": "Course 1"},
+            {"id": 2, "name": "Course 2"},
+            {"id": 3, "name": "Course 3"},
+        ]
+
+        # Create a button for each course
+        for course in courses:
+            button = QPushButton(course["name"])
+            button.setFont(QFont("Arial", 12))
+            button.clicked.connect(lambda _, c=course: self.select_course(c))
+            self.course_buttons_layout.addWidget(button)
+
+    def select_course(self, course):
+        self.course_selected.emit(course)  # Emit the selected course
 
 
 class ChatbotScreen(QWidget):
@@ -171,27 +214,29 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.stacked_widget)
 
         # Create screens
-        self.chatbot_screen = ChatbotScreen()
+        # self.chatbot_screen = ChatbotScreen()
+        self.course_selection_screen = CourseSelectionScreen()
 
         # Add screens to stacked widget
-        self.stacked_widget.addWidget(self.chatbot_screen) # Index 0
+        # self.stacked_widget.addWidget(self.chatbot_screen) # Index 0
+        self.stacked_widget.addWidget(self.course_selection_screen)  # Index 0
         
-        # Connect signals
-        self.chatbot_screen.course_selected.connect(self.handle_course_selection_for_query)
+        # # Connect signals
+        # self.chatbot_screen.course_selected.connect(self.handle_course_selection_for_query)
         
-        self.show_chatbot_screen()
+        self.show_course_selection_screen()
         
+    def show_course_selection_screen(self):
+        self.stacked_widget.setCurrentIndex(0)
             
     def show_chatbot_screen(self):
         self.stacked_widget.setCurrentIndex(1)
         
 
-    def handle_course_selection_for_query(self, course):
-        print(f"Course selected for query: {course['name']} (ID: {course['id']})")
-        # Here you would implement the logic for what happens after a course is selected.
-        # For example, you might enable a text input for the user to type their query
-        # about the selected course.
-        self.chatbot_screen.add_bot_message("You can now ask questions about this course (functionality to be implemented).")
+    def handle_course_selection(self, course):
+        # Pass the selected course to the chatbot screen
+        self.chatbot_screen.set_selected_course(course)
+        self.show_chatbot_screen()
 
 
 if __name__ == '__main__':
