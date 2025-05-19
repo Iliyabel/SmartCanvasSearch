@@ -172,18 +172,20 @@ class ChatbotScreen(QWidget):
         self.courses = []
         self.init_ui()
 
+
     def init_ui(self):
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(20, 20, 20, 20)
-        self.main_layout.setSpacing(15)
+        self.main_layout.setSpacing(15) # Increased spacing for bubbles
 
         # Chat display area
         self.chat_display = QTextEdit()
         self.chat_display.setReadOnly(True)
         self.chat_display.setFont(QFont("Arial", 12))
-        self.chat_display.setStyleSheet("background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 5px; padding: 10px;")
+        # General styling for the chat display area itself
+        self.chat_display.setStyleSheet("background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px;")
         self.main_layout.addWidget(self.chat_display, 1) # Give chat display more stretch factor
-        
+
         # Area for course selection buttons (or other inputs)
         self.input_area_container = QWidget()
         self.input_area_layout = QVBoxLayout(self.input_area_container)
@@ -193,26 +195,99 @@ class ChatbotScreen(QWidget):
         # Scroll area for course buttons if there are many
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame) # No border for the scroll area itself
         self.scroll_area.setWidget(self.input_area_container)
         self.scroll_area.setFixedHeight(150) # Adjust as needed
         self.scroll_area.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
 
         self.main_layout.addWidget(self.scroll_area)
 
+        # --- Input area at the bottom ---
+        self.bottom_input_widget = QWidget()
+        self.bottom_input_layout = QHBoxLayout(self.bottom_input_widget)
+        self.bottom_input_layout.setContentsMargins(0, 0, 0, 0)
+        self.bottom_input_layout.setSpacing(8)
+
+        self.user_input = QLineEdit()
+        self.user_input.setPlaceholderText("Type your message...")
+        self.user_input.setMinimumHeight(38)
+        self.user_input.setStyleSheet("""
+            border-radius: 16px;
+            border: 1px solid #ced4da;
+            padding: 8px 14px;
+            font-size: 12pt;
+            background: white;
+        """)
+        self.bottom_input_layout.addWidget(self.user_input, 1)
+
+        self.run_button = QPushButton("Run")
+        self.run_button.setMinimumHeight(38)
+        self.run_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4BA173;
+                color: white;
+                border-radius: 16px;
+                padding: 0 24px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: #188038; }
+            QPushButton:pressed { background-color: #145c2c; }
+        """)
+        self.run_button.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        # self.run_button.clicked.connect(self.handle_user_message)
+        self.bottom_input_layout.addWidget(self.run_button)
+
+        self.main_layout.addWidget(self.bottom_input_widget, 0, Qt.AlignmentFlag.AlignBottom)
+
         # Back to Welcome Screen button
         self.back_button = QPushButton("Back to Token Setup")
+        self.back_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #62967a; color: white; border-radius: 6px; padding: 8px;
+                    border: none;
+                }
+                QPushButton:hover { background-color: #4BA173; }
+                QPushButton:pressed { background-color: #188038; }
+            """)
         self.back_button.setFont(QFont("Arial", 10))
         # self.back_button.clicked.connect(self.go_back) # Connection will be set in MainWindow
         self.main_layout.addWidget(self.back_button, 0, Qt.AlignmentFlag.AlignRight)
         
         
     def add_bot_message(self, message):
-        self.chat_display.append(f"<p style='color: #007bff;'><b>Bot:</b> {message}</p>")
+        # Bot messages are styled with a light grey background, on the left
+        # Using a div to control alignment and margin for the bubble
+        html = f"""
+        <div style="margin-bottom: 8px; text-align: left;">
+            <p style="background-color: #e9ecef; color: #212529; 
+                      display: inline-block; padding: 8px 12px; 
+                      border-radius: 12px; border-bottom-left-radius: 2px; 
+                      max-width: 75%; text-align: left;
+                      margin-right: auto; margin-left: 0;">
+                <b>Bot:</b> {message}
+            </p>
+        </div>
+        """
+        self.chat_display.append(html)
+        self.chat_display.ensureCursorVisible() # Scroll to the bottom
 
 
     def add_user_message(self, message):
-        self.chat_display.append(f"<p style='color: #28a745; text-align: right;'><b>You:</b> {message}</p>")
+        # User messages are styled with a light blue/green background, on the right
+        # Using a div to control alignment and margin for the bubble
+        html = f"""
+        <div style="margin-bottom: 8px; text-align: right;">
+            <p style="background-color: #d1e7dd; color: #0f5132; 
+                      display: inline-block; padding: 8px 12px; 
+                      border-radius: 12px; border-bottom-right-radius: 2px;
+                      max-width: 75%; text-align: left; /* Text inside bubble is left-aligned */
+                      margin-left: auto; margin-right: 0;">
+                <b>You:</b> {message}
+            </p>
+        </div>
+        """
+        self.chat_display.append(html)
+        self.chat_display.ensureCursorVisible() # Scroll to the bottom
 
 
     def display_courses_for_selection(self, courses_data):
@@ -244,10 +319,11 @@ class ChatbotScreen(QWidget):
             btn.setMinimumHeight(35)
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #007bff; color: white; border-radius: 5px; padding: 8px;
+                    background-color: #62967a; color: white; border-radius: 6px; padding: 8px;
+                    border: none;
                 }
-                QPushButton:hover { background-color: #0056b3; }
-                QPushButton:pressed { background-color: #004085; }
+                QPushButton:hover { background-color: #4BA173; }
+                QPushButton:pressed { background-color: #188038; }
             """)
             # Use a lambda to pass the specific course when button is clicked
             btn.clicked.connect(lambda checked=False, c=course: self.on_course_button_selected(c))
@@ -276,20 +352,33 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("Course Compass")
+        self.setGeometry(100, 100, 800, 700)
 
         # Apply a basic style
         self.setStyleSheet("""
-            QMainWindow { background-color: #e9ecef; }
-            QLabel { color: #343a40; }
-            QLineEdit { border: 1px solid #ced4da; border-radius: 4px; padding: 6px; background-color: white; }
-            QPushButton {
-                background-color: #007bff; color: white; border: none;
-                padding: 10px 15px; border-radius: 4px;
+            QMainWindow { background-color: #f8f9fa; }
+            QLabel { color: #212529; }
+            QLineEdit { 
+                border: 1px solid #ced4da; 
+                border-radius: 4px; 
+                padding: 6px 10px; 
+                background-color: white; 
+                font-size: 11pt;
             }
-            QPushButton:hover { background-color: #0056b3; }
-            QPushButton:pressed { background-color: #004085; }
-            QTextEdit { border: 1px solid #ced4da; border-radius: 4px; background-color: white; }
+            QPushButton {
+                background-color: #0d6efd; 
+                color: white; 
+                border: none;
+                padding: 10px 15px; 
+                border-radius: 6px;
+                font-size: 10pt;
+            }
+            QPushButton:hover { background-color: #0b5ed7; }
+            QPushButton:pressed { background-color: #0a58ca; }
+            /* QTextEdit styling is now handled in ChatbotScreen for chat_display */
+            QScrollArea { border: none; }
         """)
+        
         self.setWindowIcon(QIcon("resources/icon.png"))
 
         self.stacked_widget = QStackedWidget()
@@ -350,21 +439,21 @@ if __name__ == '__main__':
 
     # Basic theming for a slightly more modern look
     app.setStyle("Fusion")
-    palette = QPalette()
-    palette.setColor(QPalette.ColorRole.Window, QColor(240, 240, 240)) # Light grey window background
-    palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.black)
-    palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255)) # White for input fields
-    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(230, 230, 230))
-    palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.black)
-    palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.black)
-    palette.setColor(QPalette.ColorRole.Button, QColor(220, 220, 220))
-    palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.black)
-    palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-    palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
-    palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218)) # Blue highlight
-    palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
-    app.setPalette(palette)
+    # palette = QPalette()
+    # palette.setColor(QPalette.ColorRole.Window, QColor(240, 240, 240)) # Light grey window background
+    # palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.black)
+    # palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255)) # White for input fields
+    # palette.setColor(QPalette.ColorRole.AlternateBase, QColor(230, 230, 230))
+    # palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
+    # palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.black)
+    # palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.black)
+    # palette.setColor(QPalette.ColorRole.Button, QColor(220, 220, 220))
+    # palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.black)
+    # palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+    # palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
+    # palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218)) # Blue highlight
+    # palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
+    # app.setPalette(palette)
 
 
     main_window = MainWindow()
