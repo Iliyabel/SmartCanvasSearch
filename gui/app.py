@@ -7,12 +7,13 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QPushButton, QTextEdit, QStackedWidget,
     QScrollArea, QFrame, QSizePolicy
 )
-from PyQt6.QtCore import QSize, Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QIcon, QFont, QPalette, QColor
 
 
 # --- Configuration ---
 TOKEN_FILE = "canvas_token.txt" # File to store the Canvas token
+
 
 # --- Backend Placeholder Functions ---
 def save_token(token):
@@ -25,6 +26,7 @@ def save_token(token):
         print(f"Error: Could not save token to {TOKEN_FILE}")
         return False
 
+
 def load_token():
     """Loads the token from a file."""
     if os.path.exists(TOKEN_FILE):
@@ -35,6 +37,25 @@ def load_token():
             print(f"Error: Could not read token from {TOKEN_FILE}")
             return None
     return None
+
+
+def fetch_canvas_courses(api_token):
+    """
+    Placeholder function to simulate fetching Canvas courses.
+    In a real application, this would call function to make backend call.
+    """
+    print(f"Attempting to fetch courses with token: {api_token[:5]}...") # Print only first 5 chars for security
+    if not api_token or len(api_token) < 10: # Basic validation
+        return {"status": "error", "message": "Invalid or missing API token.", "courses": []}
+
+    # Dummy data for now:
+    dummy_courses = [
+        {"id": 101, "name": "Introduction to Python Programming"},
+        {"id": 102, "name": "Calculus I"},
+        {"id": 103, "name": "Art History 101"},
+        {"id": 104, "name": "Advanced Quantum Physics"},
+    ]
+    return {"status": "success", "message": "Courses fetched successfully (simulated).", "courses": dummy_courses}
 
 
 class WelcomeScreen(QWidget):
@@ -122,6 +143,7 @@ class WelcomeScreen(QWidget):
 
         layout.addStretch() # Pushes content to the top
 
+
     def on_save_clicked(self):
         token = self.token_input.text().strip()
         if not token:
@@ -136,6 +158,117 @@ class WelcomeScreen(QWidget):
         else:
             self.status_label.setText("Failed to save token. Check console for errors.")
             self.status_label.setStyleSheet("color: red;")
+
+
+class ChatbotScreen(QWidget):
+    """
+    A screen that displays the chatbot interface.
+    This screen is displayed after the user has entered their Canvas Access Token.
+    """
+    course_selected = pyqtSignal(dict) # Signal emitted when a course is selected
+
+    def __init__(self):
+        super().__init__()
+        self.courses = []
+        self.init_ui()
+
+    def init_ui(self):
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
+        self.main_layout.setSpacing(15)
+
+        # Chat display area
+        self.chat_display = QTextEdit()
+        self.chat_display.setReadOnly(True)
+        self.chat_display.setFont(QFont("Arial", 12))
+        self.chat_display.setStyleSheet("background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 5px; padding: 10px;")
+        self.main_layout.addWidget(self.chat_display, 1) # Give chat display more stretch factor
+        
+        # Area for course selection buttons (or other inputs)
+        self.input_area_container = QWidget()
+        self.input_area_layout = QVBoxLayout(self.input_area_container)
+        self.input_area_layout.setContentsMargins(0,0,0,0)
+        self.input_area_layout.setSpacing(10)
+
+        # Scroll area for course buttons if there are many
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setWidget(self.input_area_container)
+        self.scroll_area.setFixedHeight(150) # Adjust as needed
+        self.scroll_area.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+
+        self.main_layout.addWidget(self.scroll_area)
+
+        # Back to Welcome Screen button
+        self.back_button = QPushButton("Back to Token Setup")
+        self.back_button.setFont(QFont("Arial", 10))
+        # self.back_button.clicked.connect(self.go_back) # Connection will be set in MainWindow
+        self.main_layout.addWidget(self.back_button, 0, Qt.AlignmentFlag.AlignRight)
+        
+        
+    def add_bot_message(self, message):
+        self.chat_display.append(f"<p style='color: #007bff;'><b>Bot:</b> {message}</p>")
+
+
+    def add_user_message(self, message):
+        self.chat_display.append(f"<p style='color: #28a745; text-align: right;'><b>You:</b> {message}</p>")
+
+
+    def display_courses_for_selection(self, courses_data):
+        self.courses = courses_data.get("courses", [])
+        message = courses_data.get("message", "Could not retrieve courses.")
+
+        if courses_data["status"] == "error":
+            self.add_bot_message(f"Error: {message}")
+            self.add_bot_message("Please check your token or network connection and try again.")
+            # Potentially offer a way to go back or retry
+            return
+
+        if not self.courses:
+            self.add_bot_message("No courses found or an error occurred.")
+            return
+
+        self.add_bot_message("Successfully fetched your courses!")
+        self.add_bot_message("Please select a class you want to query:")
+
+        # Clear previous buttons
+        for i in reversed(range(self.input_area_layout.count())):
+            widget = self.input_area_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        for course in self.courses:
+            btn = QPushButton(course["name"])
+            btn.setFont(QFont("Arial", 11))
+            btn.setMinimumHeight(35)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #007bff; color: white; border-radius: 5px; padding: 8px;
+                }
+                QPushButton:hover { background-color: #0056b3; }
+                QPushButton:pressed { background-color: #004085; }
+            """)
+            # Use a lambda to pass the specific course when button is clicked
+            btn.clicked.connect(lambda checked=False, c=course: self.on_course_button_selected(c))
+            self.input_area_layout.addWidget(btn)
+        self.input_area_layout.addStretch() # Push buttons to the top if not filling space
+        
+    
+    def on_course_button_selected(self, course):
+        self.add_user_message(f"Selected: {course['name']}")
+        self.add_bot_message(f"Great! You selected '{course['name']}'. What would you like to ask about this course?")
+        # Further interaction logic would go here.
+        # For now, just emit a signal.
+        self.course_selected.emit(course)
+
+        # Clear course selection buttons after selection (optional)
+        for i in reversed(range(self.input_area_layout.count())):
+            item = self.input_area_layout.itemAt(i)
+            if item.widget() and isinstance(item.widget(), QPushButton): # Only remove PushButtons
+                 item.widget().deleteLater()
+        self.input_area_layout.addStretch() # Ensure layout is still pushed up
+
 
 
 class MainWindow(QMainWindow):
@@ -164,9 +297,52 @@ class MainWindow(QMainWindow):
 
         # Create screens
         self.welcome_screen = WelcomeScreen()
+        self.chatbot_screen = ChatbotScreen()
 
         # Add screens to stacked widget
         self.stacked_widget.addWidget(self.welcome_screen) # Index 0
+        self.stacked_widget.addWidget(self.chatbot_screen) # Index 1
+        
+        # Connect signals
+        self.welcome_screen.token_submitted.connect(self.handle_token_submission)
+        self.chatbot_screen.back_button.clicked.connect(self.show_welcome_screen)
+        self.chatbot_screen.course_selected.connect(self.handle_course_selection_for_query)
+        
+        self.show_welcome_screen()
+        
+        
+    def show_welcome_screen(self):
+        self.stacked_widget.setCurrentIndex(0)
+        # Clear any previous status on welcome screen if going back
+        self.welcome_screen.status_label.setText("")
+        # Reload token into field if user goes back
+        token = load_token()
+        if token:
+            self.welcome_screen.token_input.setText(token)
+            
+            
+    def show_chatbot_screen(self):
+        self.stacked_widget.setCurrentIndex(1)
+        
+        
+    def handle_token_submission(self, token):
+        # This is where you'd use the token to fetch courses
+        print(f"Token submitted: {token[:5]}...") # Log for debugging
+        courses_data = fetch_canvas_courses(token)
+
+        self.show_chatbot_screen() # Switch to chatbot screen
+        self.chatbot_screen.chat_display.clear() # Clear previous chat
+        self.chatbot_screen.add_bot_message("Connecting to Canvas...")
+        self.chatbot_screen.display_courses_for_selection(courses_data)
+
+
+    def handle_course_selection_for_query(self, course):
+        print(f"Course selected for query: {course['name']} (ID: {course['id']})")
+        # Here you would implement the logic for what happens after a course is selected.
+        # For example, you might enable a text input for the user to type their query
+        # about the selected course.
+        self.chatbot_screen.add_bot_message("You can now ask questions about this course (functionality to be implemented).")
+        # Example: self.chatbot_screen.enable_query_input()
 
 
 if __name__ == '__main__':
