@@ -1,0 +1,96 @@
+QMainWindow { 
+    background-color: #E7F4EF; 
+}
+
+QScrollArea#scroll_area {
+    border: 3px solid #8DC641;
+    border-radius: 16px; 
+    background-color: #E7F4EF;
+    margin-bottom: 20px;
+}
+
+QWidget#chat_container {
+    border: none; 
+    margin-left: 20px;
+}
+
+
+/* Bottom input area with input text field and button to run */
+
+QWidget#bottom_input_widget {
+    background-color: white;
+    border-radius: 30px;
+    border: 1px solid #ced4da;
+    padding: 8px 14px;
+    font-size: 12pt;
+    color: #606060;
+    min-height: 39px;
+    padding: 12px;
+}
+
+QLineEdit#user_input {
+    border-radius: 16px;
+    /* border: 1px solid #ced4da; */
+    padding: 8px 14px;
+    font-size: 12pt;
+    background: white;
+    color: #606060;
+    max-height: 30px;
+    margin-left: 15px;
+}
+
+QPushButton#run_button {
+    background-color: #3c815c;
+    color: white;
+    border-radius: 22px;
+    padding: 0 30px;
+    font-weight: bold;
+    max-height: 44px;
+    margin-right: 15px;
+}
+
+QPushButton#run_button:hover { background-color: #4BA173; }
+
+QPushButton#run_button:pressed { background-color: #145c2c; }
+
+QPushButton#back_button {
+    background-color: #62967a; color: white; border-radius: 6px; padding: 8px;
+    border: none;
+}
+QPushButton#back_button:hover { background-color: #4BA173; }
+
+QPushButton#back_button:pressed { background-color: #188038; }
+
+
+/* Messages Displays */
+
+QLabel#user_message {
+    background-color: #C3E1A9;
+    color: #0f5132;
+    border-radius: 16px;
+    border-bottom-right-radius: 2px;
+    padding: 8px 16px;
+    margin: 4px 0px 4px 0px;
+    max-width: 400px;
+    font-family: "Arial";
+    font-size: 16px;
+}
+
+QLabel#user_title {
+    font-weight: bold;
+    color: #0f5132;
+    font-family: "Arial";
+    font-size: 16px;
+}
+
+QLabel#bot_message {
+    background-color: #95c8ad;
+    color: #212529;
+    border-radius: 16px;
+    border-bottom-left-radius: 2px;
+    padding: 8px 16px;
+    margin: 4px 0px 4px 0px;
+    max-width: 400px;
+    font-family: "Arial";
+    font-size: 16px;
+}

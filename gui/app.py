@@ -209,7 +209,7 @@ class ChatbotScreen(QWidget):
         self.bottom_input_layout.setSpacing(8)
 
         self.user_input = QLineEdit()
-        self.user_input.setPlaceholderText("Type your message...")
+        self.user_input.setPlaceholderText("Enter a question...")
         self.user_input.setMinimumHeight(38)
         self.user_input.setStyleSheet("""
             border-radius: 16px;
@@ -217,24 +217,26 @@ class ChatbotScreen(QWidget):
             padding: 8px 14px;
             font-size: 12pt;
             background: white;
+            color: #606060;
         """)
         self.bottom_input_layout.addWidget(self.user_input, 1)
 
         self.run_button = QPushButton("Run")
         self.run_button.setMinimumHeight(38)
+        self.run_button.setMinimumWidth(80)
         self.run_button.setStyleSheet("""
             QPushButton {
-                background-color: #4BA173;
+                background-color: #188038;
                 color: white;
                 border-radius: 16px;
                 padding: 0 24px;
                 font-weight: bold;
             }
-            QPushButton:hover { background-color: #188038; }
+            QPushButton:hover { background-color: #4BA173; }
             QPushButton:pressed { background-color: #145c2c; }
         """)
         self.run_button.setFont(QFont("Arial", 11, QFont.Weight.Bold))
-        # self.run_button.clicked.connect(self.handle_user_message)
+        self.run_button.clicked.connect(self.handle_user_message)
         self.bottom_input_layout.addWidget(self.run_button)
 
         self.main_layout.addWidget(self.bottom_input_widget, 0, Qt.AlignmentFlag.AlignBottom)
@@ -344,6 +346,15 @@ class ChatbotScreen(QWidget):
             if item.widget() and isinstance(item.widget(), QPushButton): # Only remove PushButtons
                  item.widget().deleteLater()
         self.input_area_layout.addStretch() # Ensure layout is still pushed up
+        
+    
+    def handle_user_message(self):
+        message = self.user_input.text().strip()
+        if message:
+            self.add_user_message(message)
+            self.user_input.clear()
+            # Optionally, add a bot response for demonstration
+            self.add_bot_message("This is a bot reply placeholder.")
 
 
 
@@ -438,22 +449,9 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
 
     # Basic theming for a slightly more modern look
-    app.setStyle("Fusion")
-    # palette = QPalette()
-    # palette.setColor(QPalette.ColorRole.Window, QColor(240, 240, 240)) # Light grey window background
-    # palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.black)
-    # palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255)) # White for input fields
-    # palette.setColor(QPalette.ColorRole.AlternateBase, QColor(230, 230, 230))
-    # palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
-    # palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.black)
-    # palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.black)
-    # palette.setColor(QPalette.ColorRole.Button, QColor(220, 220, 220))
-    # palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.black)
-    # palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-    # palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
-    # palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218)) # Blue highlight
-    # palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
-    # app.setPalette(palette)
+    # app.setStyle("Fusion")
+    with open("resources/styles.css", "r") as file:
+        app.setStyleSheet(file.read())
 
 
     main_window = MainWindow()
