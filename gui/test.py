@@ -25,6 +25,7 @@ class CourseSelectionScreen(QWidget):
 
         # Title
         title_label = QLabel("Select a Course")
+        title_label.setObjectName("course_selection_title")
         title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.main_layout.addWidget(title_label)
@@ -60,6 +61,7 @@ class ChatbotScreen(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.selected_course = None  # Store the selected course
         self.courses = []
         self.chat_history = []  # List of (sender, message) tuples
         self.init_ui()
@@ -68,6 +70,12 @@ class ChatbotScreen(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(50, 20, 50, 20)
         self.main_layout.setSpacing(10)
+
+        # Selected course label
+        self.selected_course_label = QLabel("No course selected")
+        self.selected_course_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        self.selected_course_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.main_layout.addWidget(self.selected_course_label)
 
         # Scroll area for chat bubbles
         self.scroll_area = QScrollArea()
@@ -112,6 +120,10 @@ class ChatbotScreen(QWidget):
         
         self.back_button.setFont(QFont("Arial", 10))
         self.main_layout.addWidget(self.back_button, 0, Qt.AlignmentFlag.AlignRight)
+        
+    def set_selected_course(self, course):
+        self.selected_course = course
+        self.selected_course_label.setText(f"Selected Course: {course['name']}")
 
 
     def add_message(self, sender, message):
@@ -213,16 +225,16 @@ class MainWindow(QMainWindow):
         self.stacked_widget = QStackedWidget()
         self.setCentralWidget(self.stacked_widget)
 
-        # Create screens
-        # self.chatbot_screen = ChatbotScreen()
+         # Create screens
         self.course_selection_screen = CourseSelectionScreen()
+        self.chatbot_screen = ChatbotScreen()
 
         # Add screens to stacked widget
-        # self.stacked_widget.addWidget(self.chatbot_screen) # Index 0
         self.stacked_widget.addWidget(self.course_selection_screen)  # Index 0
+        self.stacked_widget.addWidget(self.chatbot_screen)           # Index 1
         
-        # # Connect signals
-        # self.chatbot_screen.course_selected.connect(self.handle_course_selection_for_query)
+        # Connect signals
+        self.course_selection_screen.course_selected.connect(self.handle_course_selection)
         
         self.show_course_selection_screen()
         

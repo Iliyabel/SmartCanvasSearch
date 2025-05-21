@@ -2,6 +2,19 @@ QMainWindow {
     background-color: #E7F4EF; 
 }
 
+
+/* Course Select Interface */
+
+QLabel#course_selection_title {
+    font-family: "Arial";
+    font-size: 24px;
+    color: #0f5132;
+    font-weight: bold;
+}
+
+
+/* Chat interface css */
+
 QScrollArea#scroll_area {
     border: 3px solid #8DC641;
     border-radius: 16px; 
