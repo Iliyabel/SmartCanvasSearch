@@ -32,6 +32,7 @@ class CourseSelectionScreen(QWidget):
 
         # Placeholder for course buttons
         self.course_buttons_layout = QVBoxLayout()
+        self.course_buttons_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.main_layout.addLayout(self.course_buttons_layout)
 
         # Load courses (temporary data for now)
@@ -41,16 +42,20 @@ class CourseSelectionScreen(QWidget):
         # Temporary data (replace with file-based fetching later)
         courses = [
             {"id": 1, "name": "Course 1"},
-            {"id": 2, "name": "Course 2"},
+            {"id": 2, "name": "Course 2 hhhh wewew awdas"},
             {"id": 3, "name": "Course 3"},
         ]
 
         # Create a button for each course
         for course in courses:
             button = QPushButton(course["name"])
-            button.setFont(QFont("Arial", 12))
+            button.setObjectName("course_button")
+            shadow = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
+            button.setGraphicsEffect(shadow)
             button.clicked.connect(lambda _, c=course: self.select_course(c))
             self.course_buttons_layout.addWidget(button)
+            
+            self.course_buttons_layout.setAlignment(button, Qt.AlignmentFlag.AlignCenter)
 
     def select_course(self, course):
         self.course_selected.emit(course)  # Emit the selected course
@@ -58,6 +63,7 @@ class CourseSelectionScreen(QWidget):
 
 class ChatbotScreen(QWidget):
     course_selected = pyqtSignal(dict)
+    shadow = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
 
     def __init__(self):
         super().__init__()
@@ -73,8 +79,9 @@ class ChatbotScreen(QWidget):
 
         # Selected course label
         self.selected_course_label = QLabel("No course selected")
-        self.selected_course_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        self.selected_course_label.setObjectName("selected_course_label")
         self.selected_course_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.selected_course_label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred) 
         self.main_layout.addWidget(self.selected_course_label)
 
         # Scroll area for chat bubbles
@@ -106,7 +113,7 @@ class ChatbotScreen(QWidget):
 
         self.run_button = QPushButton("Run")
         self.run_button.setObjectName("run_button")
-        self.run_button.setMinimumWidth(80)
+        self.run_button.setGraphicsEffect(self.shadow)
         
         self.run_button.setFont(QFont("Arial", 11, QFont.Weight.Bold))
         self.run_button.clicked.connect(self.handle_user_message)
