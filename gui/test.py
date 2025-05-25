@@ -11,124 +11,6 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QIcon, QFont, QPalette, QColor, QPainter
 
 
-#=========================================================
-class RoundedLabel(QLabel):
-    """
-    A custom QLabel that displays text with a rounded background.
-    The label automatically adjusts its size to the text content.
-    """
-    def __init__(self, text="", parent=None):
-        super().__init__(text, parent)
-        
-        # --- Customizable Properties ---
-        self._padding = 10  # Padding around the text, inside the rounded background
-        self._border_radius = 15  # Radius of the rounded corners
-        self._background_color = QColor(220, 220, 240, 200) # Default: Light grayish blue with some transparency
-        self._text_color = QColor(Qt.GlobalColor.black) # Default: Black text color
-
-        # Set contents margins. This is key to ensure text is not clipped.
-        # The QLabel will render its text within these margins.
-        self.setContentsMargins(self._padding, self._padding, self._padding, self._padding)
-        
-        # Set alignment if desired (e.g., center text within the label)
-        self.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        # Set size policy:
-        # Horizontal: Maximum - Prevents stretching beyond its preferred width (sizeHint).
-        # Vertical: Preferred - Allows height to adjust, e.g., for word wrap.
-        self.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
-
-    def setText(self, text):
-        """
-        Sets the text of the label and triggers a geometry update.
-        """
-        super().setText(text)
-        # When text changes, the label's sizeHint might change.
-        # updateGeometry() informs the layout system.
-        self.updateGeometry() 
-        self.adjustSize()
-
-    def setPadding(self, padding: int):
-        """
-        Sets the padding around the text.
-        """
-        self._padding = padding
-        self.setContentsMargins(self._padding, self._padding, self._padding, self._padding)
-        self.updateGeometry() # Size hint might change due to margins
-        self.update() # Trigger repaint
-
-    def getPadding(self) -> int:
-        return self._padding
-
-    def setBorderRadius(self, radius: int):
-        """
-        Sets the border radius for the rounded background.
-        """
-        self._border_radius = radius
-        self.update() # Trigger repaint
-
-    def getBorderRadius(self) -> int:
-        return self._border_radius
-
-    def setBackgroundColor(self, color: QColor | str):
-        """
-        Sets the background color of the rounded rectangle.
-        Accepts QColor object or a color name string.
-        """
-        if isinstance(color, str):
-            self._background_color = QColor(color)
-        elif isinstance(color, QColor):
-            self._background_color = color
-        else:
-            # Fallback to default if invalid type
-            self._background_color = QColor(220, 220, 240, 200) 
-            print(f"Warning: Invalid color type for setBackgroundColor. Using default.")
-        self.update() # Trigger repaint
-
-    def getBackgroundColor(self) -> QColor:
-        return self._background_color
-
-    def setTextColor(self, color: QColor | str):
-        """
-        Sets the text color.
-        """
-        if isinstance(color, str):
-            self._text_color = QColor(color)
-        elif isinstance(color, QColor):
-            self._text_color = color
-        else:
-            self._text_color = QColor(Qt.GlobalColor.black)
-            print(f"Warning: Invalid color type for setTextColor. Using default.")
-        
-        # Update stylesheet for text color - QLabel handles this efficiently
-        self.setStyleSheet(f"color: {self._text_color.name()};")
-        # No need to call self.update() here as setStyleSheet implies an update.
-
-    def paintEvent(self, event):
-        """
-        Overrides the paint event to draw the rounded background
-        before drawing the text.
-        """
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        # Set brush and pen for the background
-        painter.setBrush(self._background_color)
-        painter.setPen(Qt.PenStyle.NoPen) # No border outline for the rounded rect itself
-
-        # Draw the rounded rectangle. self.rect() is the entire widget area.
-        painter.drawRoundedRect(self.rect(), self._border_radius, self._border_radius)
-
-        # Let the base QLabel class draw the text.
-        # It will draw the text within the contentsMargins we've set.
-        super().paintEvent(event)
-
-
-
-
-
-#==========================================================
-
 class CourseSelectionScreen(QWidget):
     course_selected = pyqtSignal(dict)  # Signal to send the selected course
 
@@ -280,21 +162,7 @@ class ChatbotScreen(QWidget):
             # label.setMaximumWidth(max_bubble_width) 
             label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
             label.setTextFormat(Qt.TextFormat.RichText)
-
-            
-            
-            # label = RoundedLabel(message)
-            # label.setObjectName("user_message")
-            # label.setBackgroundColor("#C3E1A9")
-            # label.maximumWidth = max_bubble_width
-            # label.setWordWrap(True)
-            # label.setTextColor("#0f5132")
-            # label.setBorderRadius(10)
-            # label.setPadding(8)
-            # label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-            # label.setAlignment(Qt.AlignmentFlag.AlignTop)
-            
-            
+ 
             
             # row_widget.updateGeometry()
             row_layout.addWidget(label, 1, Qt.AlignmentFlag.AlignRight)
@@ -320,17 +188,6 @@ class ChatbotScreen(QWidget):
             msg_label.setMaximumWidth(max_bubble_width)
             msg_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding)
             
-            
-            # msg_label = RoundedLabel(message)
-            # msg_label.setObjectName("user_message")
-            # msg_label.setBackgroundColor("#95c8ad")
-            # msg_label.setWordWrap(True)
-            # msg_label.setTextColor("#212529")
-            # msg_label.setBorderRadius(10)
-            # msg_label.setPadding(8)
-            
-            
-
 
             row_layout.addWidget(msg_label, 1, Qt.AlignmentFlag.AlignLeft)
 
