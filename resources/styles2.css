@@ -1,0 +1,57 @@
+QMainWindow { 
+    background-color: #E7F4EF; 
+}
+
+
+QScrollArea { 
+    background-color: #E7F4EF;
+}
+
+QWidget#chat_container_widget { 
+    border: 3px solid #8DC641; 
+    border-radius: 16px; 
+    background-color: #E7F4EF;
+}
+
+QLabel#user_title {
+    font-weight: bold;
+    color: #0f5132;
+    font-family: "Arial";
+    font-size: 16px;
+}
+
+QWidget#bottom_input_widget {
+    background-color: white;
+    border-radius: 30px;
+    border: 1px solid #ced4da;
+    padding: 8px 14px;
+    font-size: 12pt;
+    color: #606060;
+    min-height: 39px;
+    padding: 12px;
+}
+
+QLineEdit#user_input {
+    border-radius: 16px;
+    padding: 8px 14px;
+    font-size: 12pt;
+    background: white;
+    color: #606060;
+    max-height: 30px;
+    margin-left: 15px;
+}
+
+QPushButton#run_button {
+    background-color: #3c815c;
+    color: white;
+    border-radius: 22px;
+    padding: 0 30px;
+    font-weight: bold;
+    max-height: 44px;
+    min-width: 50px;
+    margin-right: 15px;
+}
+
+QPushButton#run_button:hover { background-color: #4BA173; }
+
+QPushButton#run_button:pressed { background-color: #145c2c; }
