@@ -2,6 +2,46 @@ QMainWindow {
     background-color: #E7F4EF; 
 }
 
+
+/* Course Select Interface */
+
+QLabel#course_selection_title {
+    font-family: "Arial";
+    font-size: 24px;
+    color: #0f5132;
+    font-weight: bold;
+}
+
+QPushButton#course_button {
+    font-family: "Arial";
+    font-size: 16px;
+    background-color: #397b58;
+    color: white;
+    border-radius: 16px;
+    padding: 10px 30px;
+    font-weight: bold;
+    min-width: 300px;
+}
+
+QPushButton#course_button:hover { background-color: #4BA173;}
+
+QPushButton#course_button:pressed { background-color: #145c2c; }
+
+/* ==================================== */
+
+
+/* Chat Interface */
+
+QLabel#selected_course_label {
+    font-family: "Arial";
+    font-size: 16px;
+    color: white;
+    font-weight: bold;
+    background-color: #397b58;
+    border-radius: 16px;
+    padding: 10px 30px;
+}
+
 QScrollArea { 
     background-color: #E7F4EF;
 }
