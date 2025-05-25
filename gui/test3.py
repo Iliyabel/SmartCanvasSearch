@@ -16,9 +16,10 @@ class CourseSelectionScreen(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.setSpacing(20)
+        self.layout.setContentsMargins(50, 20, 50, 20)
 
         title_label = QLabel("Select a Course")
-        title_label.setFont(QFont("Arial", 24, QFont.Weight.Bold))
+        title_label.setObjectName("course_selection_title")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(title_label)
 
@@ -36,7 +37,9 @@ class CourseSelectionScreen(QWidget):
         row, col = 0, 0
         for course_name in courses:
             button = QPushButton(course_name)
-            button.setFont(QFont("Arial", 12))
+            button.setObjectName("course_button")
+            shadow = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
+            button.setGraphicsEffect(shadow)
             button.setMinimumHeight(50)
             button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             button.clicked.connect(lambda checked=False, name=course_name: self.course_button_clicked(name))
@@ -146,7 +149,7 @@ class ChatScreenWidget(QWidget):
         self.main_layout.addWidget(self.bottom_input_widget, 0, Qt.AlignmentFlag.AlignBottom)
 
     def set_selected_course(self, course_name):
-        self.selected_course_label.setText(f"Course Selected: {course_name}")
+        self.selected_course_label.setText(course_name)
         # Clear previous chat history if any, or load course-specific history
         while self.chat_layout.count():
             child = self.chat_layout.takeAt(0)
