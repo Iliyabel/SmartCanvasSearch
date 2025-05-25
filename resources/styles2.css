@@ -2,7 +2,6 @@ QMainWindow {
     background-color: #E7F4EF; 
 }
 
-
 QScrollArea { 
     background-color: #E7F4EF;
 }
@@ -11,13 +10,6 @@ QWidget#chat_container_widget {
     border: 3px solid #8DC641; 
     border-radius: 16px; 
     background-color: #E7F4EF;
-}
-
-QLabel#user_title {
-    font-weight: bold;
-    color: #0f5132;
-    font-family: "Arial";
-    font-size: 16px;
 }
 
 QWidget#bottom_input_widget {
@@ -55,3 +47,37 @@ QPushButton#run_button {
 QPushButton#run_button:hover { background-color: #4BA173; }
 
 QPushButton#run_button:pressed { background-color: #145c2c; }
+
+
+/* Messages Displays */
+
+QLabel#user_message {
+    background-color: #C3E1A9;
+    color: #0f5132;
+    border-radius: 16px;
+    border-bottom-right-radius: 2px;
+    padding: 8px 16px;
+    margin: 4px 0px 4px 0px;
+    /* max-width: 400px; */
+    font-family: "Arial";
+    font-size: 16px;
+}
+
+QLabel#user_title {
+    font-weight: bold;
+    color: #0f5132;
+    font-family: "Arial";
+    font-size: 16px;
+}
+
+QLabel#bot_message {
+    background-color: #95c8ad;
+    color: #212529;
+    border-radius: 16px;
+    border-bottom-left-radius: 2px;
+    padding: 8px 16px;
+    margin: 4px 0px 4px 0px;
+    /* max-width: 400px; */
+    font-family: "Arial";
+    font-size: 16px;
+}

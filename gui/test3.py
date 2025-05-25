@@ -17,11 +17,11 @@ class ChatMessageWidget(QWidget):
         self.layout.setSpacing(2) # Spacing between title and message
 
         self.sender_label = QLabel(sender_name)
-        self.sender_label.setFont(QFont("Arial", 8, QFont.Weight.Bold))
+        self.sender_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
 
         self.message_label = QLabel(message_text)
         self.message_label.setWordWrap(True)
-        self.message_label.setFont(QFont("Arial", 10))
+        # self.message_label.setFont(QFont("Arial", 14))
         self.message_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         
         # Basic styling for bubbles
@@ -33,13 +33,17 @@ class ChatMessageWidget(QWidget):
                 color: {text_color};
             }}
         """
+        
         if is_user_message:
             self.sender_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+            self.sender_label.setObjectName("user_title")
+            self.message_label.setObjectName("user_message")
             self.message_label.setStyleSheet(bubble_style_sheet.format(background_color="#C3E1A9", text_color="#0f5132"))
             self.layout.addWidget(self.sender_label, alignment=Qt.AlignmentFlag.AlignRight)
             self.layout.addWidget(self.message_label, alignment=Qt.AlignmentFlag.AlignRight)
         else:
             self.sender_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            self.message_label.setObjectName("bot_message")
             self.message_label.setStyleSheet(bubble_style_sheet.format(background_color="#95c8ad", text_color="#212529"))
             self.layout.addWidget(self.sender_label, alignment=Qt.AlignmentFlag.AlignLeft)
             self.layout.addWidget(self.message_label, alignment=Qt.AlignmentFlag.AlignLeft)
@@ -60,7 +64,7 @@ class ChatWindow(QMainWindow):
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.setContentsMargins(50, 20, 50, 20)
         self.main_layout.setSpacing(10)
 
         # Define shadow effect for the run button
@@ -83,7 +87,7 @@ class ChatWindow(QMainWindow):
         self.scroll_area.setWidget(self.chat_container_widget)
         self.main_layout.addWidget(self.scroll_area, 1) # Scroll area takes most space
 
-        # --- New Input area at the bottom ---
+        # --- Input area at the bottom ---
         self.bottom_input_widget = QWidget()
         self.bottom_input_widget.setObjectName("bottom_input_widget")
         self.bottom_input_layout = QHBoxLayout(self.bottom_input_widget)
@@ -107,12 +111,9 @@ class ChatWindow(QMainWindow):
 
         self.main_layout.addWidget(self.bottom_input_widget, 0, Qt.AlignmentFlag.AlignBottom)
 
-        # For automated messages
-        self.bot_message_timer = QTimer(self)
-        self.bot_message_timer.timeout.connect(self.add_automated_message)
-        self.bot_message_timer.start(7000) # Add a bot message every 7 seconds
 
-        self.add_automated_message("Welcome to the chat!")
+        self.add_automated_message("Welcome to the Course Compass!")
+        self.add_automated_message("Please ask a question about your course materials.")
 
 
     def add_message_to_chat(self, sender_name, message_text, is_user):
@@ -130,6 +131,7 @@ class ChatWindow(QMainWindow):
 
         if is_user:
             alignment_layout.addStretch(1) # Push to the right
+            # AlignTop makes sure message does not stretch vertically
             alignment_layout.addWidget(message_widget, alignment=Qt.AlignmentFlag.AlignTop)
         else:
             alignment_layout.addWidget(message_widget, alignment=Qt.AlignmentFlag.AlignTop)
