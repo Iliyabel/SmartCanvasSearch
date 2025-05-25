@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QIcon
 
+
 class ChatMessageWidget(QWidget):
     """
     A widget to display a single chat message with a sender title and the message content.
@@ -16,36 +17,27 @@ class ChatMessageWidget(QWidget):
         self.layout.setContentsMargins(5, 2, 5, 2) # Reduced margins for tighter packing
         self.layout.setSpacing(2) # Spacing between title and message
 
-        self.sender_label = QLabel(sender_name)
-        self.sender_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
-
         self.message_label = QLabel(message_text)
         self.message_label.setWordWrap(True)
-        # self.message_label.setFont(QFont("Arial", 14))
         self.message_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         
-        # Basic styling for bubbles
-        bubble_style_sheet = """
-            QLabel {{
-                padding: 8px;
-                border-radius: 12px;
-                background-color: {background_color};
-                color: {text_color};
-            }}
-        """
-        
+        # Set Labels based on whether it's a user message or bot message
         if is_user_message:
+            self.sender_label = QLabel(sender_name)
             self.sender_label.setAlignment(Qt.AlignmentFlag.AlignRight)
             self.sender_label.setObjectName("user_title")
             self.message_label.setObjectName("user_message")
-            self.message_label.setStyleSheet(bubble_style_sheet.format(background_color="#C3E1A9", text_color="#0f5132"))
             self.layout.addWidget(self.sender_label, alignment=Qt.AlignmentFlag.AlignRight)
             self.layout.addWidget(self.message_label, alignment=Qt.AlignmentFlag.AlignRight)
         else:
-            self.sender_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            # Icon label
+            self.icon_label = QLabel()
+            self.icon_label.setFixedSize(50, 50)
+            self.icon_label.setScaledContents(True)
+            self.icon_label.setPixmap(QIcon("resources/icon.png").pixmap(50, 50))
+            
             self.message_label.setObjectName("bot_message")
-            self.message_label.setStyleSheet(bubble_style_sheet.format(background_color="#95c8ad", text_color="#212529"))
-            self.layout.addWidget(self.sender_label, alignment=Qt.AlignmentFlag.AlignLeft)
+            self.layout.addWidget(self.icon_label, alignment=Qt.AlignmentFlag.AlignLeft)
             self.layout.addWidget(self.message_label, alignment=Qt.AlignmentFlag.AlignLeft)
 
         # Ensure the message label can expand vertically
@@ -105,15 +97,14 @@ class ChatWindow(QMainWindow):
         self.run_button.setObjectName("run_button")
         self.run_button.setGraphicsEffect(self.shadow)
         
-        self.run_button.setFont(QFont("Arial", 11, QFont.Weight.Bold))
         self.run_button.clicked.connect(self.send_message)
         self.bottom_input_layout.addWidget(self.run_button)
 
         self.main_layout.addWidget(self.bottom_input_widget, 0, Qt.AlignmentFlag.AlignBottom)
 
-
-        self.add_automated_message("Welcome to the Course Compass!")
-        self.add_automated_message("Please ask a question about your course materials.")
+        # Initial welcome messages
+        self.add_bot_message("Welcome to the Course Compass!")
+        self.add_bot_message("Please ask a question about your course materials.")
 
 
     def add_message_to_chat(self, sender_name, message_text, is_user):
@@ -150,13 +141,7 @@ class ChatWindow(QMainWindow):
         self.add_message_to_chat("You", user_text, True)
         self.user_input.clear()
 
-    def add_automated_message(self, custom_message=None):
-        messages = [
-            "Hello there!", "How are you doing today?", "This is an automated message.",
-            "PyQt6 is quite versatile.", "Keep coding!", "Have a great day!"
-        ]
-        import random
-        message = custom_message if custom_message else random.choice(messages)
+    def add_bot_message(self, message):
         self.add_message_to_chat("Bot", message, False)
 
 

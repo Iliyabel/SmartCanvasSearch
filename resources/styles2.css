@@ -12,12 +12,16 @@ QWidget#chat_container_widget {
     background-color: #E7F4EF;
 }
 
+/* ==================================== */
+
+
+/* Bottom Input Area */
+
 QWidget#bottom_input_widget {
     background-color: white;
     border-radius: 30px;
     border: 1px solid #ced4da;
     padding: 8px 14px;
-    font-size: 12pt;
     color: #606060;
     min-height: 39px;
     padding: 12px;
@@ -42,11 +46,14 @@ QPushButton#run_button {
     max-height: 44px;
     min-width: 50px;
     margin-right: 15px;
+    font-size: 12pt;
 }
 
 QPushButton#run_button:hover { background-color: #4BA173; }
 
 QPushButton#run_button:pressed { background-color: #145c2c; }
+
+/* ==================================== */
 
 
 /* Messages Displays */
@@ -81,3 +88,5 @@ QLabel#bot_message {
     font-family: "Arial";
     font-size: 16px;
 }
+
+/* ==================================== */
