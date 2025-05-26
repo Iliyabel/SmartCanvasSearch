@@ -2,10 +2,77 @@ import sys
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QScrollArea, QSizePolicy, 
-    QGraphicsDropShadowEffect, QStackedWidget, QGridLayout
+    QGraphicsDropShadowEffect, QStackedWidget, QGridLayout, QTextEdit
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QFont, QIcon
+
+class WelcomeScreen(QWidget):
+    token_submitted = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.layout = QVBoxLayout(self)
+        self.layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout.setSpacing(20)
+        self.layout.setContentsMargins(50, 30, 50, 30)
+
+        title_label = QLabel("Welcome to Course Compass!")
+        title_label.setObjectName("welcome_title") # For CSS
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout.addWidget(title_label)
+
+        info_text = QTextEdit()
+        info_text.setReadOnly(True)
+        info_text.setObjectName("info_text_area") # For CSS
+        info_text.setHtml("""
+            <p><b>Course Compass</b> helps you navigate your Canvas course materials efficiently.</p>
+            <p>To get started, you'll need a <b>Canvas Access Token</b>.</p>
+            <h3>How to get your Canvas Access Token:</h3>
+            <ol>
+                <li>Log in to your Canvas account.</li>
+                <li>Go to <b>Account</b> (usually in the left sidebar).</li>
+                <li>Click on <b>Settings</b>.</li>
+                <li>Scroll down to the <b>Approved Integrations</b> section.</li>
+                <li>Click on <b>+ New Access Token</b>.</li>
+                <li>For <b>Purpose</b>, you can enter something like "Course Compass App".</li>
+                <li>Leave <b>Expires</b> blank for no expiration, or set a date.</li>
+                <li>Click <b>Generate Token</b>.</li>
+                <li><b>Important:</b> Copy the generated token immediately. You won't be able to see it again.</li>
+            </ol>
+            <p>Enter your token below to proceed.</p>
+        """)
+        self.layout.addWidget(info_text)
+
+        self.token_input_layout = QHBoxLayout()
+        token_label = QLabel("Canvas Access Token:")
+        self.token_input = QLineEdit()
+        self.token_input.setPlaceholderText("Paste your token here")
+        self.token_input.setEchoMode(QLineEdit.EchoMode.Password) # Hide token input
+        self.token_input_layout.addWidget(token_label)
+        self.token_input_layout.addWidget(self.token_input, 1)
+        self.layout.addLayout(self.token_input_layout)
+
+        self.submit_button = QPushButton("Continue with Token")
+        self.submit_button.setObjectName("submit_token_button") # For CSS
+        self.submit_button.clicked.connect(self.on_submit)
+        self.layout.addWidget(self.submit_button, 0, Qt.AlignmentFlag.AlignCenter)
+        
+        self.layout.addStretch(1)
+
+    def on_submit(self):
+        token = self.token_input.text().strip()
+        if token:
+            self.token_submitted.emit(token)
+        else:
+            # Optionally, show an error message if token is empty
+            error_label = self.findChild(QLabel, "error_label_token")
+            if not error_label:
+                error_label = QLabel("Please enter a valid Canvas Access Token.")
+                error_label.setObjectName("error_label_token") # For CSS
+                error_label.setStyleSheet("color: red;")
+                self.layout.insertWidget(self.layout.indexOf(self.submit_button), error_label, 0, Qt.AlignmentFlag.AlignCenter)
+            error_label.setVisible(True)
 
 
 class CourseSelectionScreen(QWidget):
@@ -27,7 +94,7 @@ class CourseSelectionScreen(QWidget):
         self.buttons_layout = QGridLayout()
         self.buttons_layout.setSpacing(15)
 
-        # Example courses - you can populate this dynamically
+        # Example courses 
         courses = [
             "Introduction to Python", "Web Development Basics",
             "Data Structures & Algorithms", "Machine Learning Fundamentals",
@@ -98,7 +165,7 @@ class ChatScreenWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(50, 20, 50, 20) # Chat screen takes full space
+        self.main_layout.setContentsMargins(50, 20, 50, 20)
         self.main_layout.setSpacing(10)
 
         self.selected_course_label = QLabel("No course selected")
@@ -199,28 +266,48 @@ class MainWindow(QMainWindow): # Renamed from ChatWindow
         self.setWindowTitle("Course Compass")
         self.setGeometry(500, 100, 1000, 800)
         self.setWindowIcon(QIcon("resources/icon.png"))
+        self.canvas_token = None # To store the token
 
         self.stacked_widget = QStackedWidget()
         self.setCentralWidget(self.stacked_widget)
 
+        self.welcome_screen = WelcomeScreen()
         self.course_selection_screen = CourseSelectionScreen()
         self.chat_screen = ChatScreenWidget()
 
-        self.stacked_widget.addWidget(self.course_selection_screen) # Index 0
-        self.stacked_widget.addWidget(self.chat_screen)           # Index 1
+        self.stacked_widget.addWidget(self.welcome_screen)           # Index 0
+        self.stacked_widget.addWidget(self.course_selection_screen) # Index 1
+        self.stacked_widget.addWidget(self.chat_screen)           # Index 2
+
+        self.welcome_screen.token_submitted.connect(self.handle_token_submission)
+        self.course_selection_screen.course_selected.connect(self.handle_course_selection)
+        # self.chat_screen.back_to_courses_button.clicked.connect(self.show_course_selection_screen)
 
         # Connect signals
         self.course_selection_screen.course_selected.connect(self.handle_course_selection)
         
-        self.show_course_selection_screen() # Start with course selection
+        self.show_welcome_screen() # Start with welcome screen
+        
+
+    def show_welcome_screen(self):
+        self.stacked_widget.setCurrentIndex(0)
 
     def show_course_selection_screen(self):
-        self.stacked_widget.setCurrentIndex(0)
+        self.stacked_widget.setCurrentIndex(1)
             
     def show_chat_screen(self):
-        self.stacked_widget.setCurrentIndex(1)
+        self.stacked_widget.setCurrentIndex(2)
         
+    def handle_token_submission(self, token):
+        self.canvas_token = token
+        print(f"Canvas Token Stored: {'*' * len(token)}") # For debugging, don't print the actual token in production
+        # Here would probably validate the token or use it to fetch courses
+        # For now, just proceed to course selection
+        self.show_course_selection_screen()
+
     def handle_course_selection(self, course_name):
+        # Might want to use self.canvas_token here to interact with Canvas API
+        print(f"Selected course: {course_name} (using token: {'Token Present' if self.canvas_token else 'No Token'})")
         self.chat_screen.set_selected_course(course_name)
         self.show_chat_screen()
 
