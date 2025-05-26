@@ -5,39 +5,41 @@ QMainWindow {
 
 /* Welcome Page */
 
+QWidget#welcome_scroll_widget {
+    background-color: transparent;
+}
+
 QLabel#welcome_title {
     font-family: "Arial";
     font-size: 24px;
     color: #0f5132;
     font-weight: bold;
-    margin-bottom: 10px; /* Add some space below title */
+    margin-bottom: 10px; 
 }
 
-/* Styles for Instruction Area on Welcome Page */
 QLabel#instruction_paragraph, 
 QLabel#instruction_paragraph_final,
 QLabel#instruction_list_item {
     font-family: "Arial";
-    font-size: 14px; /* Slightly smaller for body text */
-    color: #333333; /* Dark gray for readability */
-    line-height: 1.5; /* Improve line spacing */
-    margin-bottom: 8px; /* Space between instruction items */
+    font-size: 14px; 
+    color: #333333; 
+    line-height: 1.5; 
+    margin-bottom: 8px; 
 }
 
 QLabel#instruction_heading {
     font-family: "Arial";
-    font-size: 18px; /* Larger for heading */
-    color: #1a6a40; /* A slightly different green */
+    font-size: 18px; 
+    color: #1a6a40; 
     font-weight: bold;
-    margin-top: 10px; /* Space above heading */
-    margin-bottom: 5px; /* Space below heading */
+    margin-top: 10px; 
+    margin-bottom: 5px; 
 }
 
 QLabel#instruction_list_item {
-    padding-left: 15px; /* Indent list items slightly */
+    padding-left: 25px;
 }
 
-/* Style for the token input area on Welcome Page */
 QLabel#token_label {
     font-family: "Arial";
     font-size: 14px;
@@ -50,9 +52,12 @@ QLineEdit#token_input_welcome {
     font-family: "Arial";
     font-size: 14px;
     padding: 8px;
-    border: 1px solid #cccccc;
-    border-radius: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 12px;
     min-height: 25px;
+    background-color: White;
+    color: #606060; 
+    font-weight: bold;
 }
 
 QPushButton#submit_token_button {
@@ -63,7 +68,7 @@ QPushButton#submit_token_button {
     border-radius: 12px;
     padding: 10px 25px;
     font-weight: bold;
-    margin-top: 15px; /* Space above button */
+    margin-top: 15px; 
 }
 
 QPushButton#submit_token_button:hover {
@@ -72,6 +77,14 @@ QPushButton#submit_token_button:hover {
 
 QPushButton#submit_token_button:pressed {
     background-color: #145c2c;
+}
+
+QLabel#error_label_token {
+    font-family: "Arial";
+    font-size: 14px;
+    color: #dc3545;
+    margin-top: 10px; 
+    font-weight: bold;
 }
 
 /* ==================================== */

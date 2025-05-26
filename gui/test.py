@@ -12,16 +12,29 @@ class WelcomeScreen(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.layout = QVBoxLayout(self)
-        self.layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.layout.setSpacing(20)
-        self.layout.setContentsMargins(50, 30, 50, 30)
+        self.overall_layout = QVBoxLayout(self)
+        self.overall_layout.setContentsMargins(50, 20, 50, 20) # Margins for the whole screen
+
+        shadow = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
 
         title_label = QLabel("Welcome to Course Compass!")
-        title_label.setObjectName("welcome_title") # For CSS
+        title_label.setObjectName("welcome_title") 
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.layout.addWidget(title_label)
+        self.overall_layout.addWidget(title_label)
 
+        # ScrollArea for the instructional content
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+
+        # Container widget for the scrollable content
+        scroll_content_widget = QWidget()
+        scroll_content_widget.setObjectName("welcome_scroll_widget")
+        self.content_layout = QVBoxLayout(scroll_content_widget) 
+        self.content_layout.setAlignment(Qt.AlignmentFlag.AlignTop) # Content starts at top of scroll
+        self.content_layout.setSpacing(10) 
+        self.content_layout.setContentsMargins(20, 20, 20, 0)
+        
         # --- Instructions using QLabels ---
         info_widgets = []
 
@@ -58,7 +71,7 @@ class WelcomeScreen(QWidget):
         for i, item_text in enumerate(instructions_list):
             item_label = QLabel(f"{i+1}. {item_text}")
             item_label.setObjectName("instruction_list_item")
-            item_label.setTextFormat(Qt.TextFormat.RichText) # Allow bold tags etc.
+            item_label.setTextFormat(Qt.TextFormat.RichText) 
             item_label.setWordWrap(True)
             item_label.setAlignment(Qt.AlignmentFlag.AlignLeft) # Align list items left
             info_widgets.append(item_label)
@@ -69,12 +82,18 @@ class WelcomeScreen(QWidget):
         info_widgets.append(p_enter_token)
 
         for widget in info_widgets:
-            widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding) # Allow vertical expansion
-            self.layout.addWidget(widget)
+            widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding)
+            self.content_layout.addWidget(widget)
+            
+        self.content_layout.addStretch(1) # Pushes content up within scroll area if it's short
+        scroll_area.setWidget(scroll_content_widget)
+        self.overall_layout.addWidget(scroll_area, 1)
         # --- End of Instructions ---
 
 
         self.token_input_layout = QHBoxLayout()
+        self.token_input_layout.setContentsMargins(0, 20, 0, 0)
+        
         token_label = QLabel("Canvas Access Token:")
         token_label.setObjectName("token_label")
         self.token_input = QLineEdit()
@@ -83,14 +102,15 @@ class WelcomeScreen(QWidget):
         self.token_input.setEchoMode(QLineEdit.EchoMode.Password) # Hide token input
         self.token_input_layout.addWidget(token_label)
         self.token_input_layout.addWidget(self.token_input, 1)
-        self.layout.addLayout(self.token_input_layout)
+        self.overall_layout.addLayout(self.token_input_layout)
 
         self.submit_button = QPushButton("Continue with Token")
         self.submit_button.setObjectName("submit_token_button") 
+        self.submit_button.setGraphicsEffect(shadow)
         self.submit_button.clicked.connect(self.on_submit)
-        self.layout.addWidget(self.submit_button, 0, Qt.AlignmentFlag.AlignCenter)
+        self.overall_layout.addWidget(self.submit_button, 0, Qt.AlignmentFlag.AlignCenter)
         
-        self.layout.addStretch(1)
+        # self.layout.addStretch(1)
 
     def on_submit(self):
         token = self.token_input.text().strip()
@@ -101,9 +121,9 @@ class WelcomeScreen(QWidget):
             error_label = self.findChild(QLabel, "error_label_token")
             if not error_label:
                 error_label = QLabel("Please enter a valid Canvas Access Token.")
-                error_label.setObjectName("error_label_token") # For CSS
-                error_label.setStyleSheet("color: red;")
-                self.layout.insertWidget(self.layout.indexOf(self.submit_button), error_label, 0, Qt.AlignmentFlag.AlignCenter)
+                error_label.setObjectName("error_label_token") 
+                index_of_token_layout = self.overall_layout.indexOf(self.token_input_layout)
+                self.overall_layout.insertWidget(index_of_token_layout, error_label, 0, Qt.AlignmentFlag.AlignCenter)
             error_label.setVisible(True)
 
 
@@ -300,7 +320,7 @@ class MainWindow(QMainWindow): # Renamed from ChatWindow
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Course Compass")
-        self.setGeometry(500, 100, 1000, 800)
+        self.setGeometry(500, 100, 1000, 900)
         self.setWindowIcon(QIcon("resources/icon.png"))
         self.canvas_token = None # To store the token
 
@@ -352,10 +372,10 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     
     try:
-        with open("resources/styles2.css", "r") as file: # Ensure this CSS file exists
+        with open("resources/styles.css", "r") as file: # Ensure this CSS file exists
             app.setStyleSheet(file.read())
     except FileNotFoundError:
-        print("Warning: resources/styles2.css not found. Using default styles.")
+        print("Warning: resources/styles.css not found. Using default styles.")
     
     main_window = MainWindow()
     main_window.show()
