@@ -93,6 +93,10 @@ QLabel#error_label_token {
 
 /* Course Select Interface */
 
+QWidget#scroll_content_courses_widget {
+    background-color: transparent;
+}
+
 QLabel#course_selection_title {
     font-family: "Arial";
     font-size: 24px;
@@ -169,6 +173,7 @@ QWidget#bottom_input_widget {
     color: #606060;
     min-height: 39px;
     padding: 12px;
+    margin-top: 20px
 }
 
 QLineEdit#user_input {
@@ -179,6 +184,7 @@ QLineEdit#user_input {
     color: #606060;
     max-height: 30px;
     margin-left: 15px;
+    font-weight: bold;
 }
 
 QPushButton#run_button {
@@ -206,13 +212,14 @@ QPushButton#run_button:pressed { background-color: #145c2c; }
 
 QLabel#user_message {
     background-color: #C3E1A9;
-    color: #0f5132;
+    color: #606060;
     border-radius: 16px;
     border-bottom-right-radius: 2px;
     padding: 8px 16px;
     margin: 4px 0px 4px 0px;
     font-family: "Arial";
     font-size: 16px;
+    font-weight: bold;
 }
 
 QLabel#user_title {
@@ -224,13 +231,14 @@ QLabel#user_title {
 
 QLabel#bot_message {
     background-color: #95c8ad;
-    color: #212529;
+    color: #606060;
     border-radius: 16px;
     border-bottom-left-radius: 2px;
     padding: 8px 16px;
     margin: 4px 0px 4px 0px;
     font-family: "Arial";
     font-size: 16px;
+    font-weight: bold;
 }
 
 /* ==================================== */

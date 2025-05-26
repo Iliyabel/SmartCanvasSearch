@@ -13,9 +13,11 @@ class WelcomeScreen(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.overall_layout = QVBoxLayout(self)
-        self.overall_layout.setContentsMargins(50, 20, 50, 20) # Margins for the whole screen
+        self.overall_layout.setContentsMargins(50, 35, 50, 35) # Margins for the whole screen
 
-        shadow = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
+        shadow = QGraphicsDropShadowEffect(blurRadius=6, xOffset=0, yOffset=0)
+        shadow1 = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=0)
+        shadow2 = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
 
         title_label = QLabel("Welcome to Course Compass!")
         title_label.setObjectName("welcome_title") 
@@ -26,6 +28,7 @@ class WelcomeScreen(QWidget):
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        scroll_area.setGraphicsEffect(shadow) # Add shadow effect to scroll area
 
         # Container widget for the scrollable content
         scroll_content_widget = QWidget()
@@ -99,6 +102,7 @@ class WelcomeScreen(QWidget):
         self.token_input = QLineEdit()
         self.token_input.setObjectName("token_input_welcome")
         self.token_input.setPlaceholderText("Paste your token here")
+        self.token_input.setGraphicsEffect(shadow1) # Add shadow effect to token input
         self.token_input.setEchoMode(QLineEdit.EchoMode.Password) # Hide token input
         self.token_input_layout.addWidget(token_label)
         self.token_input_layout.addWidget(self.token_input, 1)
@@ -106,11 +110,10 @@ class WelcomeScreen(QWidget):
 
         self.submit_button = QPushButton("Continue with Token")
         self.submit_button.setObjectName("submit_token_button") 
-        self.submit_button.setGraphicsEffect(shadow)
+        self.submit_button.setGraphicsEffect(shadow2)
         self.submit_button.clicked.connect(self.on_submit)
         self.overall_layout.addWidget(self.submit_button, 0, Qt.AlignmentFlag.AlignCenter)
         
-        # self.layout.addStretch(1)
 
     def on_submit(self):
         token = self.token_input.text().strip()
@@ -134,42 +137,59 @@ class CourseSelectionScreen(QWidget):
         super().__init__(parent)
         self.layout = QVBoxLayout(self)
         self.layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.layout.setSpacing(20)
-        self.layout.setContentsMargins(50, 20, 50, 20)
+        self.layout.setSpacing(15)
+        self.layout.setContentsMargins(50, 35, 50, 35)
+
+        shadow = QGraphicsDropShadowEffect(blurRadius=6, xOffset=0, yOffset=0) # Shadow for scroll area
 
         title_label = QLabel("Select a Course")
         title_label.setObjectName("course_selection_title")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(title_label)
 
-        # Grid for course buttons for better arrangement
-        self.buttons_layout = QGridLayout()
+        # --- Scroll Area for Course Buttons ---
+        self.scroll_area_courses = QScrollArea()
+        self.scroll_area_courses.setWidgetResizable(True)
+        self.scroll_area_courses.setGraphicsEffect(shadow) # Add shadow effect to scroll area
+        self.scroll_area_courses.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        self.scroll_content_courses_widget = QWidget() # Widget to hold the grid layout
+        self.scroll_content_courses_widget.setObjectName("scroll_content_courses_widget")
+        self.buttons_layout = QGridLayout(self.scroll_content_courses_widget) # Grid layout for buttons
         self.buttons_layout.setSpacing(15)
+        self.buttons_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Example courses 
         courses = [
             "Introduction to Python", "Web Development Basics",
             "Data Structures & Algorithms", "Machine Learning Fundamentals",
-            "Advanced Calculus", "Organic Chemistry"
+            "Advanced Calculus", "Organic Chemistry",
+            "Linear Algebra", "Discrete Mathematics",
+            "Software Engineering", "Database Management",
+            "Computer Networks", "Operating Systems",
+            "Artificial Intelligence", "Cybersecurity Principles",
+            "Introduction to Python", "Web Development Basics"
         ]
 
         row, col = 0, 0
+        max_cols = 2
         for course_name in courses:
             button = QPushButton(course_name)
             button.setObjectName("course_button")
-            shadow = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
-            button.setGraphicsEffect(shadow)
+            shadow1 = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
+            button.setGraphicsEffect(shadow1)
             button.setMinimumHeight(50)
             button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             button.clicked.connect(lambda checked=False, name=course_name: self.course_button_clicked(name))
             self.buttons_layout.addWidget(button, row, col)
             col += 1
-            if col >= 2: # Adjust number of columns as needed (e.g., 2 columns)
+            if col >= max_cols:
                 col = 0
                 row += 1
         
-        self.layout.addLayout(self.buttons_layout)
-        self.layout.addStretch(1) # Add stretch to push buttons up if few
+        self.scroll_area_courses.setWidget(self.scroll_content_courses_widget)
+        self.layout.addWidget(self.scroll_area_courses, 1) # Scroll area takes expanding space
+        # --- End of Scroll Area for Course Buttons ---
 
     def course_button_clicked(self, course_name):
         self.course_selected.emit(course_name)
@@ -217,11 +237,14 @@ class ChatScreenWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(50, 20, 50, 20)
+        self.main_layout.setContentsMargins(50, 35, 50, 35)
         self.main_layout.setSpacing(10)
 
         # Define shadow effect
-        self.shadow = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
+        shadow0 = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2) # Shadow for back button
+        shadow1 = QGraphicsDropShadowEffect(blurRadius=6, xOffset=0, yOffset=0) # Shadow for scroll area
+        shadow2 = QGraphicsDropShadowEffect(blurRadius=6, xOffset=0, yOffset=0) # Shadow for input area
+        shadow3 = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2) # shadow for Run button
 
         self.header_layout = QHBoxLayout()
         self.selected_course_label = QLabel("No course selected")
@@ -230,7 +253,7 @@ class ChatScreenWidget(QWidget):
         
         self.back_to_courses_button = QPushButton("Change Course")
         self.back_to_courses_button.setObjectName("back_to_courses_button")
-        self.back_to_courses_button.setGraphicsEffect(self.shadow)
+        self.back_to_courses_button.setGraphicsEffect(shadow0)
 
         self.header_layout.addWidget(self.selected_course_label, 1, Qt.AlignmentFlag.AlignLeft)
         self.header_layout.addWidget(self.back_to_courses_button, 0, Qt.AlignmentFlag.AlignRight)
@@ -239,9 +262,11 @@ class ChatScreenWidget(QWidget):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setObjectName("scroll_area")
+        self.scroll_area.setGraphicsEffect(shadow1)
 
         self.chat_container_widget = QWidget()
         self.chat_container_widget.setObjectName("chat_container_widget")
+        self.chat_container_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         
         self.chat_layout = QVBoxLayout(self.chat_container_widget)
         self.chat_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -252,8 +277,9 @@ class ChatScreenWidget(QWidget):
 
         self.bottom_input_widget = QWidget()
         self.bottom_input_widget.setObjectName("bottom_input_widget")
+        self.bottom_input_widget.setGraphicsEffect(shadow2)
         self.bottom_input_layout = QHBoxLayout(self.bottom_input_widget)
-        self.bottom_input_layout.setContentsMargins(0, 0, 0, 0)
+        self.bottom_input_layout.setContentsMargins(0, 20, 0, 0)
         self.bottom_input_layout.setSpacing(8)
 
         self.user_input = QLineEdit()
@@ -263,9 +289,11 @@ class ChatScreenWidget(QWidget):
         self.user_input.returnPressed.connect(self.handle_user_message)
         self.bottom_input_layout.addWidget(self.user_input, 1)
 
+        shadow = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
+
         self.run_button = QPushButton("Run")
         self.run_button.setObjectName("run_button")
-        self.run_button.setGraphicsEffect(self.shadow)
+        self.run_button.setGraphicsEffect(shadow3)
         self.run_button.clicked.connect(self.handle_user_message)
         self.bottom_input_layout.addWidget(self.run_button)
 
