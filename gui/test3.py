@@ -22,31 +22,63 @@ class WelcomeScreen(QWidget):
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(title_label)
 
-        info_text = QTextEdit()
-        info_text.setReadOnly(True)
-        info_text.setObjectName("info_text_area") # For CSS
-        info_text.setHtml("""
-            <p><b>Course Compass</b> helps you navigate your Canvas course materials efficiently.</p>
-            <p>To get started, you'll need a <b>Canvas Access Token</b>.</p>
-            <h3>How to get your Canvas Access Token:</h3>
-            <ol>
-                <li>Log in to your Canvas account.</li>
-                <li>Go to <b>Account</b> (usually in the left sidebar).</li>
-                <li>Click on <b>Settings</b>.</li>
-                <li>Scroll down to the <b>Approved Integrations</b> section.</li>
-                <li>Click on <b>+ New Access Token</b>.</li>
-                <li>For <b>Purpose</b>, you can enter something like "Course Compass App".</li>
-                <li>Leave <b>Expires</b> blank for no expiration, or set a date.</li>
-                <li>Click <b>Generate Token</b>.</li>
-                <li><b>Important:</b> Copy the generated token immediately. You won't be able to see it again.</li>
-            </ol>
-            <p>Enter your token below to proceed.</p>
-        """)
-        self.layout.addWidget(info_text)
+        # --- Instructions using QLabels ---
+        info_widgets = []
+
+        p1 = QLabel("<b>Course Compass</b> helps you navigate your Canvas course materials efficiently.")
+        p1.setObjectName("instruction_paragraph")
+        p1.setTextFormat(Qt.TextFormat.RichText)
+        p1.setWordWrap(True)
+        info_widgets.append(p1)
+
+        p2 = QLabel("To get started, you'll need a <b>Canvas Access Token</b>.")
+        p2.setObjectName("instruction_paragraph")
+        p2.setTextFormat(Qt.TextFormat.RichText)
+        p2.setWordWrap(True)
+        info_widgets.append(p2)
+
+        h3 = QLabel("<h3>How to get your Canvas Access Token:</h3>")
+        h3.setObjectName("instruction_heading")
+        h3.setTextFormat(Qt.TextFormat.RichText) # Allows HTML for heading
+        h3.setWordWrap(True)
+        info_widgets.append(h3)
+        
+        instructions_list = [
+            "Log in to your Canvas account.",
+            "Go to <b>Account</b> (usually in the left sidebar).",
+            "Click on <b>Settings</b>.",
+            "Scroll down to the <b>Approved Integrations</b> section.",
+            "Click on <b>+ New Access Token</b>.",
+            "For <b>Purpose</b>, you can enter something like \"Course Compass App\".",
+            "Leave <b>Expires</b> blank for no expiration, or set a date.",
+            "Click <b>Generate Token</b>.",
+            "<b>Important:</b> Copy the generated token immediately. You won't be able to see it again."
+        ]
+
+        for i, item_text in enumerate(instructions_list):
+            item_label = QLabel(f"{i+1}. {item_text}")
+            item_label.setObjectName("instruction_list_item")
+            item_label.setTextFormat(Qt.TextFormat.RichText) # Allow bold tags etc.
+            item_label.setWordWrap(True)
+            item_label.setAlignment(Qt.AlignmentFlag.AlignLeft) # Align list items left
+            info_widgets.append(item_label)
+
+        p_enter_token = QLabel("Enter your token below to proceed.")
+        p_enter_token.setObjectName("instruction_paragraph_final")
+        p_enter_token.setWordWrap(True)
+        info_widgets.append(p_enter_token)
+
+        for widget in info_widgets:
+            widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding) # Allow vertical expansion
+            self.layout.addWidget(widget)
+        # --- End of Instructions ---
+
 
         self.token_input_layout = QHBoxLayout()
         token_label = QLabel("Canvas Access Token:")
+        token_label.setObjectName("token_label")
         self.token_input = QLineEdit()
+        self.token_input.setObjectName("token_input_welcome")
         self.token_input.setPlaceholderText("Paste your token here")
         self.token_input.setEchoMode(QLineEdit.EchoMode.Password) # Hide token input
         self.token_input_layout.addWidget(token_label)
@@ -54,7 +86,7 @@ class WelcomeScreen(QWidget):
         self.layout.addLayout(self.token_input_layout)
 
         self.submit_button = QPushButton("Continue with Token")
-        self.submit_button.setObjectName("submit_token_button") # For CSS
+        self.submit_button.setObjectName("submit_token_button") 
         self.submit_button.clicked.connect(self.on_submit)
         self.layout.addWidget(self.submit_button, 0, Qt.AlignmentFlag.AlignCenter)
         
@@ -168,16 +200,21 @@ class ChatScreenWidget(QWidget):
         self.main_layout.setContentsMargins(50, 20, 50, 20)
         self.main_layout.setSpacing(10)
 
+        # Define shadow effect
+        self.shadow = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
+
+        self.header_layout = QHBoxLayout()
         self.selected_course_label = QLabel("No course selected")
         self.selected_course_label.setObjectName("selected_course_label")
         self.selected_course_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.main_layout.addWidget(self.selected_course_label, 0, Qt.AlignmentFlag.AlignLeft)
+        
+        self.back_to_courses_button = QPushButton("Change Course")
+        self.back_to_courses_button.setObjectName("back_to_courses_button")
+        self.back_to_courses_button.setGraphicsEffect(self.shadow)
 
-        # Define shadow effect for the run button
-        self.shadow = QGraphicsDropShadowEffect(self)
-        self.shadow.setBlurRadius(8)
-        self.shadow.setColor(Qt.GlobalColor.darkGray)
-        self.shadow.setOffset(2, 2)
+        self.header_layout.addWidget(self.selected_course_label, 1, Qt.AlignmentFlag.AlignLeft)
+        self.header_layout.addWidget(self.back_to_courses_button, 0, Qt.AlignmentFlag.AlignRight)
+        self.main_layout.addLayout(self.header_layout)
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
@@ -209,7 +246,6 @@ class ChatScreenWidget(QWidget):
         self.run_button = QPushButton("Run")
         self.run_button.setObjectName("run_button")
         self.run_button.setGraphicsEffect(self.shadow)
-        self.run_button.setFont(QFont("Arial", 11, QFont.Weight.Bold))
         self.run_button.clicked.connect(self.handle_user_message)
         self.bottom_input_layout.addWidget(self.run_button)
 
@@ -281,7 +317,7 @@ class MainWindow(QMainWindow): # Renamed from ChatWindow
 
         self.welcome_screen.token_submitted.connect(self.handle_token_submission)
         self.course_selection_screen.course_selected.connect(self.handle_course_selection)
-        # self.chat_screen.back_to_courses_button.clicked.connect(self.show_course_selection_screen)
+        self.chat_screen.back_to_courses_button.clicked.connect(self.show_course_selection_screen)
 
         # Connect signals
         self.course_selection_screen.course_selected.connect(self.handle_course_selection)
