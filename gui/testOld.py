@@ -5,10 +5,10 @@ import os
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QStackedWidget,
-    QScrollArea, QSizePolicy, QGraphicsDropShadowEffect
+    QScrollArea, QSizePolicy, QGraphicsDropShadowEffect, QTextEdit
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QIcon, QFont, QPalette, QColor
+from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtGui import QIcon, QFont, QPalette, QColor, QPainter
 
 
 class CourseSelectionScreen(QWidget):
@@ -81,8 +81,8 @@ class ChatbotScreen(QWidget):
         self.selected_course_label = QLabel("No course selected")
         self.selected_course_label.setObjectName("selected_course_label")
         self.selected_course_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.selected_course_label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred) 
-        self.main_layout.addWidget(self.selected_course_label)
+        self.selected_course_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred) 
+        self.main_layout.addWidget(self.selected_course_label, 0, Qt.AlignmentFlag.AlignLeft)
 
         # Scroll area for chat bubbles
         self.scroll_area = QScrollArea()
@@ -93,12 +93,9 @@ class ChatbotScreen(QWidget):
         
         self.chat_layout = QVBoxLayout(self.chat_container)
         self.chat_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        
+        self.chat_layout.setSpacing(5)
         self.scroll_area.setWidget(self.chat_container)
         self.main_layout.addWidget(self.scroll_area, 1)
-
-        # Spacer to push input area to the bottom
-        self.main_layout.addStretch()
 
         # --- Input area at the bottom ---
         self.bottom_input_widget = QWidget()
@@ -129,6 +126,7 @@ class ChatbotScreen(QWidget):
         self.back_button.setFont(QFont("Arial", 10))
         self.main_layout.addWidget(self.back_button, 0, Qt.AlignmentFlag.AlignRight)
         
+        
     def set_selected_course(self, course):
         self.selected_course = course
         self.selected_course_label.setText(f"Selected Course: {course['name']}")
@@ -141,37 +139,35 @@ class ChatbotScreen(QWidget):
 
         row_widget = QWidget()
         row_widget.setStyleSheet("border: 3px solid blue;") # FOR DEBUGGING
+        row_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         row_layout = QVBoxLayout(row_widget)
-        row_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         row_layout.setContentsMargins(0, 0, 0, 0)
         row_layout.setSpacing(5) # Spacing between messages
 
         if sender == "user":
-            # User message: right-aligned
 
             # User declaration label
             title_label = QLabel()
             title_label.setObjectName("user_title")
-            title_label.setAlignment(Qt.AlignmentFlag.AlignRight)
             title_label.setText("You")
-            row_layout.addWidget(title_label, 0, alignment=Qt.AlignmentFlag.AlignRight)
+            row_layout.addWidget(title_label, 0, Qt.AlignmentFlag.AlignRight)
             
             # Message label
             label = QLabel()
             label.setObjectName("user_message")
             label.setWordWrap(True)
-            # label.setAlignment(Qt.AlignmentFlag.AlignRight)
-            label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            # label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            # label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             label.setText(message)
-            label.setMaximumWidth(max_bubble_width)
-            # label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
-            label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding)
-        
-            print(f"  User Message Label (before layout) sizeHint: {label.sizeHint()}, width: {label.width()}, height: {label.height()}")    
-            row_layout.addWidget(label, 1, alignment=Qt.AlignmentFlag.AlignRight)
-        
-
-
+            # label.setMaximumWidth(max_bubble_width) 
+            label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            label.setTextFormat(Qt.TextFormat.RichText)
+ 
+            
+            # row_widget.updateGeometry()
+            row_layout.addWidget(label, 1, Qt.AlignmentFlag.AlignRight)
+            self.chat_layout.addWidget(row_widget, 0, Qt.AlignmentFlag.AlignTop)
+            
         else:
             # Bot message: left-aligned with icon
 
@@ -180,36 +176,24 @@ class ChatbotScreen(QWidget):
             icon_label.setFixedSize(50, 50)
             icon_label.setScaledContents(True)
             icon_label.setPixmap(QIcon("resources/icon.png").pixmap(50, 50))
-            row_layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignLeft)
+            row_layout.addWidget(icon_label, 0, alignment=Qt.AlignmentFlag.AlignTop)
 
             # Message label
             msg_label = QLabel()
             msg_label.setObjectName("bot_message")
             msg_label.setWordWrap(True)
             msg_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            # msg_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
             msg_label.setText(message)
             msg_label.setMaximumWidth(max_bubble_width)
             msg_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding)
-
-            print(f"  Bot Message Label (before layout) sizeHint: {msg_label.sizeHint()}, width: {msg_label.width()}, height: {msg_label.height()}")
-            row_layout.addWidget(msg_label, 1, Qt.AlignmentFlag.AlignLeft)
             
 
-        print(f"  Row Widget (container for this message) sizeHint: {row_widget.sizeHint()}")
-        print(f"  Row Widget actual size (before adding to chat_layout): w={row_widget.width()}, h={row_widget.height()}")
+            row_layout.addWidget(msg_label, 1, Qt.AlignmentFlag.AlignLeft)
 
-        row_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.chat_layout.addWidget(row_widget, alignment=Qt.AlignmentFlag.AlignTop)
+            self.chat_layout.addWidget(row_widget, 0, Qt.AlignmentFlag.AlignTop)
+
         QApplication.processEvents()
-
-        if sender == "user":
-            label.adjustSize()  # Adjust size after adding to layout
-            print(f"  User Message Label (after layout) sizeHint: {label.sizeHint()}, width: {label.width()}, height: {label.height()}")
-        else:
-            print(f"  Bot Message Label (after layout) sizeHint: {msg_label.sizeHint()}, width: {msg_label.width()}, height: {msg_label.height()}")
-        print(f"  Row Widget actual size (after adding to chat_layout & processEvents): w={row_widget.width()}, h={row_widget.height()}")
-        print(f"--- End of message add ---")
-        
         self.scroll_area.verticalScrollBar().setValue(self.scroll_area.verticalScrollBar().maximum())
 
     def add_user_message(self, message):
@@ -277,9 +261,6 @@ class MainWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-
-    # Basic theming for a slightly more modern look
-    # app.setStyle("Fusion")
 
     with open("resources/styles.css", "r") as file:
         app.setStyleSheet(file.read())

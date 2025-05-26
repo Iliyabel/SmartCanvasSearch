@@ -3,6 +3,81 @@ QMainWindow {
 }
 
 
+/* Welcome Page */
+
+QLabel#welcome_title {
+    font-family: "Arial";
+    font-size: 24px;
+    color: #0f5132;
+    font-weight: bold;
+    margin-bottom: 10px; /* Add some space below title */
+}
+
+/* Styles for Instruction Area on Welcome Page */
+QLabel#instruction_paragraph, 
+QLabel#instruction_paragraph_final,
+QLabel#instruction_list_item {
+    font-family: "Arial";
+    font-size: 14px; /* Slightly smaller for body text */
+    color: #333333; /* Dark gray for readability */
+    line-height: 1.5; /* Improve line spacing */
+    margin-bottom: 8px; /* Space between instruction items */
+}
+
+QLabel#instruction_heading {
+    font-family: "Arial";
+    font-size: 18px; /* Larger for heading */
+    color: #1a6a40; /* A slightly different green */
+    font-weight: bold;
+    margin-top: 10px; /* Space above heading */
+    margin-bottom: 5px; /* Space below heading */
+}
+
+QLabel#instruction_list_item {
+    padding-left: 15px; /* Indent list items slightly */
+}
+
+/* Style for the token input area on Welcome Page */
+QLabel#token_label {
+    font-family: "Arial";
+    font-size: 14px;
+    color: #333333;
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+QLineEdit#token_input_welcome {
+    font-family: "Arial";
+    font-size: 14px;
+    padding: 8px;
+    border: 1px solid #cccccc;
+    border-radius: 8px;
+    min-height: 25px;
+}
+
+QPushButton#submit_token_button {
+    font-family: "Arial";
+    font-size: 16px;
+    background-color: #397b58;
+    color: white;
+    border-radius: 12px;
+    padding: 10px 25px;
+    font-weight: bold;
+    margin-top: 15px; /* Space above button */
+}
+
+QPushButton#submit_token_button:hover {
+    background-color: #4BA173;
+}
+
+QPushButton#submit_token_button:pressed {
+    background-color: #145c2c;
+}
+
+/* ==================================== */
+
+
+
 /* Course Select Interface */
 
 QLabel#course_selection_title {
@@ -27,8 +102,11 @@ QPushButton#course_button:hover { background-color: #4BA173;}
 
 QPushButton#course_button:pressed { background-color: #145c2c; }
 
+/* ==================================== */
 
-/* Chat interface css */
+
+
+/* Chat Interface */
 
 QLabel#selected_course_label {
     font-family: "Arial";
@@ -40,26 +118,41 @@ QLabel#selected_course_label {
     padding: 10px 30px;
 }
 
-QScrollArea#scroll_area {
-    border: 3px solid #8DC641;
-    border-radius: 16px; 
+QPushButton#back_to_courses_button {
+    font-family: "Arial";
+    font-size: 16px;
+    color: white;
+    font-weight: bold;
+    background-color: #397b58;
+    border-radius: 16px;
+    padding: 10px 30px;
+}
+
+QPushButton#back_to_courses_button:hover { background-color: #4BA173; }
+
+QPushButton#back_to_courses_button:pressed { background-color: #145c2c; }
+
+QScrollArea { 
     background-color: #E7F4EF;
+    border: 3px solid #8DC641; 
+    border-radius: 16px; 
 }
 
-QWidget#chat_container {
-    border: 3px solid brown;
-    /* margin-left: 20px; */
+QWidget#chat_container_widget { 
+    background-color: transparent;
 }
 
+/* ==================================== */
 
-/* Bottom input area with input text field and button to run */
+
+
+/* Bottom Input Area */
 
 QWidget#bottom_input_widget {
     background-color: white;
     border-radius: 30px;
     border: 1px solid #ced4da;
     padding: 8px 14px;
-    font-size: 12pt;
     color: #606060;
     min-height: 39px;
     padding: 12px;
@@ -84,19 +177,16 @@ QPushButton#run_button {
     max-height: 44px;
     min-width: 50px;
     margin-right: 15px;
+    font-size: 12pt;
+    font-family: Arial, Helvetica, sans-serif;
 }
 
 QPushButton#run_button:hover { background-color: #4BA173; }
 
 QPushButton#run_button:pressed { background-color: #145c2c; }
 
-QPushButton#back_button {
-    background-color: #62967a; color: white; border-radius: 6px; padding: 8px;
-    border: none;
-}
-QPushButton#back_button:hover { background-color: #4BA173; }
+/* ==================================== */
 
-QPushButton#back_button:pressed { background-color: #188038; }
 
 
 /* Messages Displays */
@@ -108,7 +198,6 @@ QLabel#user_message {
     border-bottom-right-radius: 2px;
     padding: 8px 16px;
     margin: 4px 0px 4px 0px;
-    /* max-width: 400px; */
     font-family: "Arial";
     font-size: 16px;
 }
@@ -127,7 +216,8 @@ QLabel#bot_message {
     border-bottom-left-radius: 2px;
     padding: 8px 16px;
     margin: 4px 0px 4px 0px;
-    /* max-width: 400px; */
     font-family: "Arial";
     font-size: 16px;
 }
+
+/* ==================================== */
