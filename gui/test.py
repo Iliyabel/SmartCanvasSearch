@@ -1,4 +1,8 @@
 import sys
+import os
+import json
+from utils import general_utils as gu
+
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QScrollArea, QSizePolicy, 
@@ -131,7 +135,8 @@ class WelcomeScreen(QWidget):
 
 
 class CourseSelectionScreen(QWidget):
-    course_selected = pyqtSignal(str) # Signal to emit when a course is selected
+    # dict: {'course_id': int, 'course_name': str}
+    course_selected = pyqtSignal(dict) # Signal to emit when a course is selected.
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -159,33 +164,43 @@ class CourseSelectionScreen(QWidget):
         self.buttons_layout.setSpacing(15)
         self.buttons_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        # Example courses 
-        courses = [
-            "Introduction to Python", "Web Development Basics",
-            "Data Structures & Algorithms", "Machine Learning Fundamentals",
-            "Advanced Calculus", "Organic Chemistry",
-            "Linear Algebra", "Discrete Mathematics",
-            "Software Engineering", "Database Management",
-            "Computer Networks", "Operating Systems",
-            "Artificial Intelligence", "Cybersecurity Principles",
-            "Introduction to Python", "Web Development Basics"
-        ]
 
-        row, col = 0, 0
-        max_cols = 2
-        for course_name in courses:
-            button = QPushButton(course_name)
-            button.setObjectName("course_button")
-            shadow1 = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
-            button.setGraphicsEffect(shadow1)
-            button.setMinimumHeight(50)
-            button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            button.clicked.connect(lambda checked=False, name=course_name: self.course_button_clicked(name))
-            self.buttons_layout.addWidget(button, row, col)
-            col += 1
-            if col >= max_cols:
-                col = 0
-                row += 1
+        self.courses_data = [] 
+        try:
+            json_file_path = os.path.join("resources", "ClassList.json")
+            
+            if not os.path.exists(json_file_path):
+                print(f"Relative path {json_file_path} not found. Trying direct path.")
+
+            self.courses_data = gu.extract_course_name_id_pairs(json_file_path)
+            print(f"Loaded {len(self.courses_data)} courses for selection.")
+
+        except Exception as e:
+            print(f"Error loading courses in CourseSelectionScreen: {e}")
+        
+        if not self.courses_data:
+            no_courses_label = QLabel("No courses found or failed to load.\nCheck 'resources/ClassList.json'.")
+            no_courses_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.buttons_layout.addWidget(no_courses_label, 0, 0, 1, 2)
+        else:
+            row, col = 0, 0
+            max_cols = 2 
+            for course_info in self.courses_data:
+                course_name = course_info.get("name", "Unnamed Course")
+                # course_id = course_info.get("id") # ID is in course_info
+
+                button = QPushButton(course_name)
+                button.setObjectName("course_button")
+                shadow1 = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
+                button.setGraphicsEffect(shadow1)
+                button.setMinimumHeight(50)
+                button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+                button.clicked.connect(lambda checked=False, c_info=course_info: self.course_button_clicked(c_info))
+                self.buttons_layout.addWidget(button, row, col)
+                col += 1
+                if col >= max_cols:
+                    col = 0
+                    row += 1
         
         self.scroll_area_courses.setWidget(self.scroll_content_courses_widget)
         self.layout.addWidget(self.scroll_area_courses, 1) # Scroll area takes expanding space
@@ -300,7 +315,7 @@ class ChatScreenWidget(QWidget):
         self.main_layout.addWidget(self.bottom_input_widget, 0, Qt.AlignmentFlag.AlignBottom)
 
     def set_selected_course(self, course_name):
-        self.selected_course_label.setText(course_name)
+        self.selected_course_label.setText(course_name['name'])
         # Clear previous chat history if any, or load course-specific history
         while self.chat_layout.count():
             child = self.chat_layout.takeAt(0)

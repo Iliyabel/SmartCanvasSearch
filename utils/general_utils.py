@@ -33,6 +33,52 @@ def read_config(file_path: str) -> dict:
     return config_data
 
 
+def extract_course_name_id_pairs(json_file_path: str) -> list:
+    """
+    Extracts course name and ID pairs from the ClassList.json file.
+
+    Args:
+        json_file_path (str): The path to the ClassList.json file.
+
+    Returns:
+        list: A list of dictionaries, where each dictionary is {'name': course_name, 'id': course_id}.
+              Returns an empty list if the file is not found, is not valid JSON, or in case of other errors.
+    """
+    courses_data = []
+    try:
+        # Check if the path is absolute or relative
+        if not os.path.isabs(json_file_path):
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # Project root
+            json_file_path = os.path.join(base_dir, json_file_path)
+
+
+        with open(json_file_path, 'r', encoding='utf-8') as f:
+            raw_data = json.load(f)
+
+        if not isinstance(raw_data, list):
+            print(f"Warning: Expected a list in {json_file_path}, but got {type(raw_data)}.")
+            return []
+
+        for item in raw_data:
+            # Check if the item is a dictionary and has both 'name' and 'id' keys
+            if isinstance(item, dict) and "name" in item and "id" in item:
+                courses_data.append({"name": item["name"], "id": item["id"]})
+            # else:
+                # print(f"Skipping item due to missing 'name'/'id' or not a dict: {item}") # FOR DEBUGGING PURPOSES
+        
+        if not courses_data:
+            print(f"Warning: No valid course name/ID pairs found in {json_file_path}.")
+
+    except FileNotFoundError:
+        print(f"Error: File not found at {json_file_path}")
+    except json.JSONDecodeError:
+        print(f"Error: Could not decode JSON from {json_file_path}")
+    except Exception as e:
+        print(f"An unexpected error occurred while extracting course pairs: {e}")
+    
+    return courses_data
+
+
 # Function to get list of all classes
 def getAllClasses(BASE_URL: str, headers: dict) -> str:
     """
