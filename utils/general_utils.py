@@ -135,179 +135,134 @@ def listCourseMaterial(classId: int, BASE_URL: str, headers: dict) -> str:
     # Get course files
     response = requests.get(f'{BASE_URL}courses/{classId}/files?per_page=100', headers=headers)
 
-    # Check if request was successful
+    course_dir = os.path.join(PROJECT_ROOT_FROM_UTILS, "Courses", str(classId))
+    if not os.path.exists(course_dir):
+        os.makedirs(course_dir)
+        print(f"Created directory: {course_dir}")
+
+    file_json_path = os.path.join(course_dir, "files.json")
+
     if response.status_code == 200:
-        courses = response.json()
-
-        path = "Courses/" + str(classId)
-
-        # Make file for courseid if it does not exist
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-        fileLocation = path + "/files.json"
-
-        with open(fileLocation, "w") as file:
-            json.dump(courses, file, indent=4)  
-        return "Successful"
+        files_metadata = response.json()
+        try:
+            with open(file_json_path, "w") as file:
+                json.dump(files_metadata, file, indent=4)
+            print(f"Successfully saved files metadata to: {file_json_path}")
+            return "Successful"
+        except IOError as e:
+            print(f"Error writing {file_json_path}: {e}")
+            return "ERROR"
     else:
-
-        path = "Courses/" + str(classId)
-
-        # Make file for courseid if it does not exist
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-        fileLocation = path + "/files.json"
-
-        errorPage = response.text
-        with open(fileLocation, "w") as file:
-            file.write(errorPage)
+        error_message = f"Error fetching files for course {classId}: {response.status_code}, {response.text}"
+        print(error_message)
+        try:
+            # Still write error into json file
+            with open(file_json_path, "w") as file:
+                json.dump({"error": error_message, "status_code": response.status_code, "response_text": response.text}, file, indent=4)
+        except IOError as e:
+            print(f"Error writing error details to {file_json_path}: {e}")
         return "ERROR"
     
 
-# Function to get list of pptx files in given class
-def getCoursePPTXMaterial(classId, BASE_URL, headers):
+# Function to download a course file given filename and file_path
+def downloadCourseFile(filename: str, download_url: str, full_save_path: str, headers: dict) -> str:
     """
-
-    Get all PPTX files from a specific course.
-    This function retrieves the PPTX files associated with a course and saves them to a JSON file (files.json).
-
-    Args:
-        classId (int): The ID of the course.
-        BASE_URL (str): The base URL for the API.
-        headers (dict): The headers to include in the request.
-
-    Returns:
-        str: "Successful" if the request was successful, otherwise "ERROR".
-    This function also downloads the PPTX files to the local directory.
+    Download a course file from the given URL and save it to the specified full_save_path.
+    Checks if the file already exists before downloading.
     """
-    from pptx import Presentation
     import requests
 
-    # Get all class files. Result located in files.json
-    result = listCourseMaterial(classId, BASE_URL, headers)
+    if os.path.exists(full_save_path):
+        print(f"SKIPPING: {filename} already exists at {full_save_path}")
+        return "File already exists"
 
-    if result == "ERROR":
-        return print(f"ERROR: Retrieveing all files from {classId}. Ensure getCourseMaterial() ran successfully.")
+    try:
+        response = requests.get(download_url, headers=headers, stream=True)
+        response.raise_for_status() # Raise HTTPError if HTTP request returned unsuccessful status code
+
+        with open(full_save_path, 'wb') as file:
+            for chunk in response.iter_content(chunk_size=8192): # Download in chunks
+                file.write(chunk)
+        print(f"DOWNLOADED: {filename} to {full_save_path}")
+        return "Successful"
+    except requests.exceptions.RequestException as e:
+        print(f"ERROR: Failed to download {filename}. Exception: {e}")
+        return "ERROR"
+    except IOError as e:
+        print(f"ERROR: Failed to write {filename} to {full_save_path}. Exception: {e}")
+        return "ERROR"
+
+
+def _get_specific_course_material(classId: int, headers: dict, file_extension: str) -> str:
+    """Helper function to download files of a specific type for a course."""
+    course_files_dir = os.path.join(PROJECT_ROOT_FROM_UTILS, "Courses", str(classId))
+    files_json_path = os.path.join(course_files_dir, "files.json")
+
+    if not os.path.exists(files_json_path):
+        print(f"ERROR: '{files_json_path}' not found. Ensure listCourseMaterial() ran successfully first for course {classId}.")
+        return "ERROR"
+
+    try:
+        with open(files_json_path, 'r') as file:
+            files_metadata = json.load(file)
+    except json.JSONDecodeError:
+        print(f"ERROR: Could not decode JSON from {files_json_path}.")
+        return "ERROR"
+    except IOError:
+        print(f"ERROR: Could not read {files_json_path}.")
+        return "ERROR"
+
+    if not isinstance(files_metadata, list): # Handle cases where files.json might contain an error object
+        print(f"ERROR: Expected a list of files in {files_json_path}, but found: {type(files_metadata)}. Content: {files_metadata}")
+        return "ERROR"
+
+    specific_files = [f for f in files_metadata if isinstance(f, dict) and f.get('filename', '').endswith(file_extension)]
     
-    # Check if file exists.
-    if not os.path.exists('files.json'):
-        print("ERROR: 'files.json' not found. Ensure getCourseMaterial() ran successfully.")
-        return
+    if not specific_files:
+        print(f"No '{file_extension}' files found for course {classId}.")
+        return "No files of this type"
 
-    # Read from files.json
-    with open('files.json', 'r') as file:
-        files = json.load(file)
+    all_successful = True
+    for file_info in specific_files:
+        download_url = file_info.get('url')
+        filename = file_info.get('filename')
 
-
-    # Filter for PPTX files
-    pptx_files = [f for f in files if f['filename'].endswith('.pptx')]
-
-    
-    for pptx in pptx_files:
-        download_url = pptx.get('url')
-        filename = pptx.get('filename')
-
-        if download_url:
-            response = requests.get(download_url, headers=headers)
-            if response.status_code == 200:
-                with open(filename, 'wb') as f:
-                    f.write(response.content)
-                print(f"DOWNLOADED: {filename}")
-            else:
-                print(f"ERROR: Failed to download {filename}. Status code: {response.status_code}")
+        if download_url and filename:
+            download_target_path = os.path.join(course_files_dir, filename)
+            result = downloadCourseFile(filename, download_url, download_target_path, headers)
+            if result not in ["Successful", "File already exists"]:
+                all_successful = False
         else:
-            print(f"Skipping file {filename}: No download URL found.")
+            print(f"Skipping file {filename or 'Unknown name'}: Missing download URL or filename.")
+            all_successful = False
+            
+    return "Successful" if all_successful else "ERROR"
+
+
+# Function to get list of pptx files in given class
+def getCoursePPTXMaterial(classId: int, headers: dict) -> str:
+    """Downloads all PPTX files for a specific course."""
+    from pptx import Presentation # Keep local import for this specific parser if needed later
+    return _get_specific_course_material(classId, headers, '.pptx')
 
 
 # Function to get list of pdf files in given class
-def getCoursePDFMaterial(classId, BASE_URL, headers):
-    import requests
-
-    # Get all class files. Result located in files.json
-    result = listCourseMaterial(classId, BASE_URL, headers)
-
-    if result == "ERROR":
-        return print(f"ERROR: Retrieveing all files from {classId}. Ensure listCourseMaterial() ran successfully.")
-    
-    path = "Courses/" + str(classId)
-
-    # Make file for courseid if it does not exist
-    if not os.path.exists(path):
-        os.makedirs(path)
-
-    fileLocation = path + "/files.json"
-
-    # Check if file exists.
-    if not os.path.exists(fileLocation):
-        print("ERROR: 'files.json' not found. Ensure listCourseMaterial() ran successfully.")
-        return
-
-    # Read from files.json
-    with open(fileLocation, 'r') as file:
-        files = json.load(file)
-
-
-    # Filter for pdf files
-    pdf_files = [f for f in files if f['filename'].endswith('.pdf')]
-
-    
-    for pdf in pdf_files:
-        download_url = pdf.get('url')
-        filename = pdf.get('filename')
-
-        if download_url:
-            response = requests.get(download_url, headers=headers)
-            if response.status_code == 200:
-                with open(filename, 'wb') as f:
-                    f.write(response.content)
-                print(f"DOWNLOADED: {filename}")
-            else:
-                print(f"ERROR: Failed to download {filename}. Status code: {response.status_code}")
-        else:
-            print(f"Skipping file {filename}: No download URL found.")
+def getCoursePDFMaterial(classId: int, headers: dict) -> str:
+    """Downloads all PDF files for a specific course."""
+    return _get_specific_course_material(classId, headers, '.pdf')
 
 
 # Function to get list of DOCX files in given class
-def getCourseDOCXMaterial(classId, BASE_URL, headers):
-    from docx import Document
-    import requests
-
-    # Get all class files. Result located in files.json
-    result = listCourseMaterial(classId, BASE_URL, headers)
-
-    if result == "ERROR":
-        return print(f"ERROR: Retrieveing all files from {classId}. Ensure getCourseMaterial() ran successfully.")
-    
-    # Check if file exists.
-    if not os.path.exists('files.json'):
-        print("ERROR: 'files.json' not found. Ensure getCourseMaterial() ran successfully.")
-        return
-
-    # Read from files.json
-    with open('files.json', 'r') as file:
-        files = json.load(file)
+def getCourseDOCXMaterial(classId: int, headers: dict) -> str:
+    """Downloads all DOCX files for a specific course."""
+    from docx import Document # Keep local import
+    return _get_specific_course_material(classId, headers, '.docx')
 
 
-    # Filter for pdf files
-    docx_files = [f for f in files if f['filename'].endswith('.docx')]
-
-    
-    for docx in docx_files:
-        download_url = docx.get('url')
-        filename = docx.get('filename')
-
-        if download_url:
-            response = requests.get(download_url, headers=headers)
-            if response.status_code == 200:
-                with open(filename, 'wb') as f:
-                    f.write(response.content)
-                print(f"DOWNLOADED: {filename}")
-            else:
-                print(f"ERROR: Failed to download {filename}. Status code: {response.status_code}")
-        else:
-            print(f"Skipping file {filename}: No download URL found.")
+# Function to get list of TXT files in given class
+def getCourseTXTMaterial(classId: int, headers: dict) -> str:
+    """Downloads all TXT files for a specific course."""
+    return _get_specific_course_material(classId, headers, '.txt')
 
 
 # Function to download a course file given filename and file_path
