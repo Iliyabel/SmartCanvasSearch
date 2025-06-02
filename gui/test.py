@@ -106,7 +106,7 @@ class WelcomeScreen(QWidget):
         self.token_input = QLineEdit()
         self.token_input.setObjectName("token_input_welcome")
         self.token_input.setPlaceholderText("Paste your token here")
-        self.token_input.setGraphicsEffect(shadow1) # Add shadow effect to token input
+        self.token_input.setGraphicsEffect(shadow1) # Add shadow effect
         self.token_input.setEchoMode(QLineEdit.EchoMode.Password) # Hide token input
         self.token_input_layout.addWidget(token_label)
         self.token_input_layout.addWidget(self.token_input, 1)
@@ -164,8 +164,9 @@ class CourseSelectionScreen(QWidget):
         self.buttons_layout.setSpacing(15)
         self.buttons_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-
-        self.courses_data = [] 
+        # Load courses data from JSON file
+        # self.courses_data = [{'name': "course1", 'id': 1234}, {'name': "course2", 'id': 1234}] # Placeholder for course data
+        self.course_data = [] # Initialize empty list for course data
         try:
             json_file_path = os.path.join("resources", "ClassList.json")
             
@@ -303,8 +304,6 @@ class ChatScreenWidget(QWidget):
         self.user_input.setFont(QFont("Arial", 10))
         self.user_input.returnPressed.connect(self.handle_user_message)
         self.bottom_input_layout.addWidget(self.user_input, 1)
-
-        shadow = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
 
         self.run_button = QPushButton("Run")
         self.run_button.setObjectName("run_button")

@@ -1,14 +1,5 @@
-from docx import Document
 import os
-from pdfminer.high_level import extract_text
-from pptx import Presentation
-from PyPDF2 import PdfReader
-from sentence_transformers import SentenceTransformer, util
 import json
-import requests
-import numpy as np
-import nltk
-
 
 #nltk.download('punkt_tab')
 
@@ -92,6 +83,7 @@ def getAllClasses(BASE_URL: str, headers: dict) -> str:
     Returns:
         str: "Successful" if the request was successful, otherwise "ERROR".
     """
+    import requests
 
     # Get list of courses
     response = requests.get(f'{BASE_URL}courses?per_page=100', headers=headers)
@@ -123,6 +115,7 @@ def listCourseMaterial(classId: int, BASE_URL: str, headers: dict) -> str:
     This function retrieves the files associated with a course and saves them to a JSON file (files.json).
     This function also checks if the course ID is valid and if the request was successful.
     """
+    import requests
 
     # Get course files
     response = requests.get(f'{BASE_URL}courses/{classId}/files?per_page=100', headers=headers)
@@ -174,6 +167,8 @@ def getCoursePPTXMaterial(classId, BASE_URL, headers):
         str: "Successful" if the request was successful, otherwise "ERROR".
     This function also downloads the PPTX files to the local directory.
     """
+    from pptx import Presentation
+    import requests
 
     # Get all class files. Result located in files.json
     result = listCourseMaterial(classId, BASE_URL, headers)
@@ -213,6 +208,7 @@ def getCoursePPTXMaterial(classId, BASE_URL, headers):
 
 # Function to get list of pdf files in given class
 def getCoursePDFMaterial(classId, BASE_URL, headers):
+    import requests
 
     # Get all class files. Result located in files.json
     result = listCourseMaterial(classId, BASE_URL, headers)
@@ -260,6 +256,8 @@ def getCoursePDFMaterial(classId, BASE_URL, headers):
 
 # Function to get list of DOCX files in given class
 def getCourseDOCXMaterial(classId, BASE_URL, headers):
+    from docx import Document
+    import requests
 
     # Get all class files. Result located in files.json
     result = listCourseMaterial(classId, BASE_URL, headers)
@@ -316,6 +314,7 @@ def downloadCourseFile(filename: str, download_url: str, file_path: str, headers
     If the file already exists, it skips the download and returns "File already exists".
     If the download is successful, it saves the file locally and returns "Successful".
     """
+    import requests
 
     # Make the request to download the file
     response = requests.get(download_url, headers=headers)
@@ -349,6 +348,8 @@ def extractTextFromPPTX(pptx_path: str) -> str:
     If it does, it appends the text to a string and returns the complete text.
     The function returns the extracted text as a single string, with each slide's text separated by a newline character.
     """
+    from pptx import Presentation
+    
     prs = Presentation(pptx_path)
     text = ""
     for slide in prs.slides:
@@ -374,6 +375,8 @@ def extractTextFromPdf(pdf_path: str) -> str:
     The function returns the extracted text as a single string, with leading and trailing whitespace removed.
     The function also handles any exceptions that may occur during the extraction process.
     """
+    from pdfminer.high_level import extract_text
+    
     text = extract_text(pdf_path)
     return text.strip()
 
@@ -393,6 +396,7 @@ def extractTextFromDocx(docx_path : str) -> str:
     It iterates through each paragraph in the document and appends the text to a string.
     The function returns the extracted text as a single string, with each paragraph's text separated by a newline character.
     """
+    from docx import Document
     doc = Document(docx_path)
     text = "\n".join([para.text for para in doc.paragraphs])
     return text
@@ -418,7 +422,7 @@ def extractTextFromTxt(txt_path: str) -> str:
 
 
 # Function to encode text using SentenceTransformer
-def encode_text(text: str) -> np.ndarray:
+def encode_text(text: str):
     """
     Encode text using SentenceTransformer.
 
@@ -430,6 +434,8 @@ def encode_text(text: str) -> np.ndarray:
         
     This function uses the 'all-MiniLM-L6-v2' model from SentenceTransformer to encode the text.
     """
+    import numpy as np
+    from sentence_transformers import SentenceTransformer
 
     # Load the model
     model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -461,6 +467,9 @@ def semantic_chunking(text: str, similarity_threshold: float = 0.6) -> list:
     If the similarity is below the threshold, it creates a new chunk.
     Finally, it returns a list of text chunks.
     """
+    import nltk
+    from sentence_transformers import SentenceTransformer, util
+    import numpy as np
 
     sentences = nltk.sent_tokenize(text)
 
