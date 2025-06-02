@@ -5,8 +5,6 @@ import json
 UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT_FROM_UTILS = os.path.dirname(UTILS_DIR)
 
-#nltk.download('punkt_tab')
-
 
 # Function to read in config file data
 def read_config(file_path: str) -> dict:

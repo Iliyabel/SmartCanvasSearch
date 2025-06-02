@@ -7,7 +7,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
     
 from PyQt6.QtWidgets import QApplication
-from gui.test import MainWindow
+from gui.app import MainWindow
 
 
 def run_application():

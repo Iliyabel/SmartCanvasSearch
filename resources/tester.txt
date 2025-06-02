@@ -1,3 +1,0 @@
-hello. this is the text inside the tester.txt file.
-
-This is for testing purposes.
