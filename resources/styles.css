@@ -113,6 +113,8 @@ QPushButton#course_button {
     padding: 10px 30px;
     font-weight: bold;
     min-width: 300px;
+    max-width: 400px;
+    text-align: left;
 }
 
 QPushButton#course_button:hover { background-color: #4BA173;}

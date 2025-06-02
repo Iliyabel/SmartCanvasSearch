@@ -217,7 +217,7 @@ class CourseSelectionScreen(QWidget):
         self.scroll_content_courses_widget = QWidget() # Widget to hold the grid layout
         self.scroll_content_courses_widget.setObjectName("scroll_content_courses_widget")
         self.buttons_layout = QGridLayout(self.scroll_content_courses_widget) # Grid layout for buttons
-        self.buttons_layout.setSpacing(15)
+        self.buttons_layout.setSpacing(20)
         self.buttons_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Load courses data from JSON file
