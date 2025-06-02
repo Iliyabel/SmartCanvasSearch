@@ -1,12 +1,12 @@
 import sys
 import os
-import json
+# import json
 from utils import general_utils as gu
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QScrollArea, QSizePolicy, 
-    QGraphicsDropShadowEffect, QStackedWidget, QGridLayout, QTextEdit
+    QGraphicsDropShadowEffect, QStackedWidget, QGridLayout
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QFont, QIcon
@@ -409,16 +409,3 @@ class MainWindow(QMainWindow): # Renamed from ChatWindow
         self.chat_screen.set_selected_course(course_name)
         self.show_chat_screen()
 
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    
-    try:
-        with open("resources/styles.css", "r") as file: # Ensure this CSS file exists
-            app.setStyleSheet(file.read())
-    except FileNotFoundError:
-        print("Warning: resources/styles.css not found. Using default styles.")
-    
-    main_window = MainWindow()
-    main_window.show()
-    sys.exit(app.exec())
