@@ -1,30 +1,45 @@
 import weaviate
 import weaviate.classes.config as wvcc
-from weaviate.classes.config import Property, DataType, ReferenceProperty
+from weaviate.classes.config import Property, DataType
 from weaviate.classes.query import Filter
 import weaviate.classes.query as wq
 from weaviate.util import generate_uuid5
 import json
 import os
-from general_utils import extractTextFromPdf, extractTextFromPPTX, extractTextFromDocx, extractTextFromTxt, semantic_chunking, downloadCourseFile, encode_text
+from .general_utils import extractTextFromPdf, extractTextFromPPTX, extractTextFromDocx, extractTextFromTxt, semantic_chunking, encode_text
 import nltk
-from dotenv import load_dotenv
-from cprint import print_header, print_status, print_warning
 
-nltk.download('punkt_tab')
+def print_header(msg): print(f"\n--- {msg} ---")
+def print_status(msg): print(f"[STATUS] {msg}")
+def print_warning(msg, detail=""): print(f"[WARNING] {msg} {detail}")
+
+try:
+    nltk.data.find('tokenizers/punkt')
+except nltk.downloader.DownloadError:
+    print_status("NLTK 'punkt' tokenizer not found. Downloading...")
+    nltk.download('punkt')
+    
+# Determine project root from weaviate_utils.py's location for standalone use
+WEAVIATE_UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT_FROM_WEAVIATE_UTILS = os.path.dirname(WEAVIATE_UTILS_DIR)
+
 
 # Initialize and return a weaviate client.
-def create_client(url="http://localhost:8080"):
+def create_client(url="http://localhost:8080", grpc_port=50051):
     try:
-        client = weaviate.connect_to_local()
+        client = weaviate.connect_to_local(
+            host="localhost", # Docker exposes on localhost
+            port=8080,        # Default HTTP port from docker-compose
+            grpc_port=grpc_port # Default gRPC port
+        )
 
-        if client.is_ready() and client.is_live():
-            print_status(f"Connected to Weaviate at {url}")
+        if client.is_ready(): 
+            print_status(f"Successfully connected to Weaviate at {url}")
             return client
         else:
-            raise Exception("Weaviate is not live/ready")
+            raise Exception("Weaviate is not ready after connection attempt.")
     except Exception as e:
-        print_warning("Connection error:", str(e))
+        print_warning(f"Weaviate connection error to {url} (gRPC port {grpc_port}):", str(e))
         return None
 
 
@@ -55,60 +70,66 @@ def create_schema(client):
     schema = client.collections
     
     # Check if schema is already created
-    if "Course" in schema.list_all().keys():
-        print("Schema already exists. Skipping creation.")
+    if schema.exists("Course") and schema.exists("File") and schema.exists("Chunk"):
+        print_status("Schema (Course, File, Chunk collections) already exists. Skipping creation.")
         return
     
     # Add Course collection to schema
-    schema.create(
-        name="Course",
-        properties=[
-            Property(name="name", data_type=DataType.TEXT),
-            Property(name="course_id", data_type=DataType.INT),
-            Property(name="course_code", data_type=DataType.TEXT),
-            Property(name="start_date", data_type=DataType.DATE),
-            Property(name="end_date", data_type=DataType.DATE),
-            Property(name="uuid", data_type=DataType.TEXT),
-            
-        ],
-        description="A Canvas course with relevant metadata",
-        vectorizer_config=wvcc.Configure.Vectorizer.none(),
-    )
+    if not schema.exists("Course"):
+        schema.create(
+            name="Course",
+            properties=[
+                Property(name="name", data_type=DataType.TEXT),
+                Property(name="course_id", data_type=DataType.INT),
+                Property(name="course_code", data_type=DataType.TEXT),
+                Property(name="start_date", data_type=DataType.DATE, skip_vectorization=True),
+                Property(name="end_date", data_type=DataType.DATE, skip_vectorization=True),
+                Property(name="uuid", data_type=DataType.TEXT, skip_vectorization=True),
+                
+            ],
+            description="A Canvas course with relevant metadata",
+            vectorizer_config=wvcc.Configure.Vectorizer.none(),
+        )
+        print_status("Created 'Course' collection.")
 
 
     # Add File collection to schema
-    schema.create(
-        name="File",
-        properties=[
-            Property(name="file_id", data_type=DataType.INT),
-            Property(name="uuid", data_type=DataType.TEXT),
-            Property(name="display_name", data_type=DataType.TEXT),
-            Property(name="file_type", data_type=DataType.TEXT),
-            Property(name="file_path", data_type=DataType.TEXT),
-            Property(name="url", data_type=DataType.TEXT),
-            Property(name="size_bytes", data_type=DataType.INT),
-            Property(name="created_at", data_type=DataType.DATE),
-            Property(name="modified_at", data_type=DataType.DATE),
-            Property(name="filename", data_type=DataType.TEXT),
-            Property(name="course_id", data_type=DataType.INT),
-        ],
-        description="A file belonging to a course",
-        vectorizer_config=wvcc.Configure.Vectorizer.none(),
-    )
+    if not schema.exists("File"):
+        schema.create(
+            name="File",
+            properties=[
+                Property(name="file_id", data_type=DataType.INT),
+                Property(name="uuid", data_type=DataType.TEXT, skip_vectorization=True),
+                Property(name="display_name", data_type=DataType.TEXT, skip_vectorization=True),
+                Property(name="file_type", data_type=DataType.TEXT, skip_vectorization=True),
+                Property(name="local_file_path", data_type=DataType.TEXT, skip_vectorization=True),
+                Property(name="url", data_type=DataType.TEXT, skip_vectorization=True),
+                Property(name="size_bytes", data_type=DataType.INT, skip_vectorization=True),
+                Property(name="created_at", data_type=DataType.DATE, skip_vectorization=True),
+                Property(name="modified_at", data_type=DataType.DATE, skip_vectorization=True),
+                Property(name="filename", data_type=DataType.TEXT, skip_vectorization=True),
+                Property(name="course_id", data_type=DataType.INT, skip_vectorization=True),
+            ],
+            description="A file belonging to a course",
+            vectorizer_config=wvcc.Configure.Vectorizer.none(),
+        )
+        print_status("Created 'File' collection.")
     
 
     # Add Chunk collection to schema
-    schema.create(
-        name="Chunk",
-        properties=[
-            Property(name="chunk_text", data_type=DataType.TEXT),
-            Property(name="chunk_index", data_type=DataType.INT),
-            Property(name="file_id", data_type=DataType.INT),
-            Property(name="course_id", data_type=DataType.INT),
-        ],
-        description="A chunk of text from a file used for vector search",
-        vectorizer_config=wvcc.Configure.Vectorizer.none(),
-    )
+    if not schema.exists("Chunk"):
+        schema.create(
+            name="Chunk",
+            properties=[
+                Property(name="chunk_text", data_type=DataType.TEXT),
+                Property(name="chunk_index", data_type=DataType.INT, skip_vectorization=True),
+                Property(name="file_id", data_type=DataType.INT, skip_vectorization=True),
+                Property(name="course_id", data_type=DataType.INT, skip_vectorization=True),
+            ],
+            description="A chunk of text from a file used for vector search",
+            vectorizer_config=wvcc.Configure.Vectorizer.none(),
+        )
+        print_status("Created 'Chunk' collection.")
 
     print_status("Schema created successfully!")
 
@@ -140,47 +161,45 @@ def prepare_courses_for_weaviate(json_file_path: str):
     """
     try:
         # Load the JSON data
-        with open(json_file_path, 'r') as file:
-            courses = json.load(file)
-
-        print(f"Loaded {len(courses)} courses from {json_file_path}")
+        with open(json_file_path, 'r', encoding='utf-8') as file:
+            courses_raw = json.load(file)
+        print_status(f"Loaded {len(courses_raw)} raw course entries from {json_file_path}")
 
         # Extract relevant fields
         prepared_data = []
-        for course in courses:
-            if all(key in course for key in ["name", "course_code", "start_at", "end_at", "uuid"]):
+        for course in courses_raw:
+            if isinstance(course, dict) and all(key in course for key in ["name", "id", "course_code", "uuid"]):
+                # Handle potentially null dates
+                start_at = course.get("start_at")
+                end_at = course.get("end_at")
+
                 prepared_data.append({
                     "name": course["name"],
-                    "course_id": course["id"],
+                    "course_id": course["id"], # This is the Canvas course ID
                     "course_code": course["course_code"],
-                    "start_date": course["start_at"],
-                    "end_date": course["end_at"],
-                    "uuid": course["uuid"]
+                    "start_date": start_at,
+                    "end_date": end_at,
+                    "uuid": course["uuid"] # This is Canvas's UUID for the course
                 })
-
-                # Check if a directory with the course UUID exists
-                course_directory = os.path.join("Courses", str(course["id"]))
-                if not os.path.exists(course_directory):
-                    os.makedirs(course_directory)
-                    print(f"Created directory for course id: {course['id']}")
         
-
+        print_status(f"Prepared {len(prepared_data)} courses for Weaviate.")
         return prepared_data
     
     except FileNotFoundError:
-        print(f"Error: File not found at {json_file_path}")
+        print_warning(f"Course list file not found at {json_file_path}")
         return []
     except json.JSONDecodeError:
-        print(f"Error: Failed to decode JSON from {json_file_path}")
+        print_warning(f"Failed to decode JSON from {json_file_path}")
         return []
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print_warning(f"An unexpected error occurred in prepare_courses_for_weaviate: {e}")
         return []
     
 
-def prepare_files_for_weaviate(json_file_path: str, course_id: int):
+def prepare_files_for_weaviate(files_json_path: str, course_id: int, project_root: str):
     """
-    Extracts file data from a JSON file and prepares it for insertion into a Weaviate database.
+    Extracts file data from a JSON file (files.json for a course) and prepares it for Weaviate.
+    Does NOT download files here. Assumes files are already downloaded.
 
     Args:
         json_file_path (str): Path to the JSON file containing file data.
@@ -191,58 +210,48 @@ def prepare_files_for_weaviate(json_file_path: str, course_id: int):
     """
     try:
         # Load the JSON data
-        with open(json_file_path, 'r') as file:
-            files = json.load(file)
+        with open(files_json_path, 'r', encoding='utf-8') as file:
+            files_raw = json.load(file)
 
-        print(f"Loaded {len(files)} files from {json_file_path}")
+        if not isinstance(files_raw, list): # Handle if files.json contains an error object
+            print_warning(f"Expected a list in {files_json_path}, but found {type(files_raw)}. Content: {files_raw}")
+            return []
 
         # Extract relevant fields
         prepared_data = []
-        for file in files:
-            if all(key in file for key in ["id", "display_name", "url", "size", "created_at", "filename"]):
+        for file_info in files_raw:
+            if isinstance(file_info, dict) and all(key in file_info for key in ["id", "uuid", "display_name", "mime_class", "url", "size", "created_at", "modified_at", "filename"]):
+                local_file_path = os.path.join(project_root, "Courses", str(course_id), file_info["filename"])
+                
+                # Check if the local file actually exists
+                if not os.path.exists(local_file_path):
+                    print_warning(f"File {file_info['filename']} not found locally at {local_file_path}. Skipping Weaviate prep for this file.")
+                    continue
+
                 prepared_data.append({
-                    "file_id": file["id"],
-                    "uuid": file["uuid"],
-                    "display_name": file["display_name"],
-                    "file_type": file["mime_class"],
-                    "file_path": file["url"],
-                    "url": file["url"],
-                    "size_bytes": file["size"],
-                    "created_at": file["created_at"],
-                    "modified_at": file["modified_at"],
-                    "filename": file["filename"],
-                    "course_id": course_id
+                    "file_id": file_info["id"], # Canvas file ID
+                    "canvas_file_uuid": file_info["uuid"], # Canvas's own UUID for the file
+                    "display_name": file_info["display_name"],
+                    "file_type": file_info.get("mime_class", "unknown"), # e.g., pdf, pptx (Canvas uses 'pdf', 'pptx' etc.)
+                    "local_file_path": local_file_path, # Actual path
+                    "url": file_info["url"], # Original download URL
+                    "size_bytes": file_info["size"],
+                    "created_at": file_info["created_at"],
+                    "modified_at": file_info["modified_at"],
+                    "filename": file_info["filename"],
+                    "course_id": course_id # Canvas course ID
                 })
-
-                # Check if the course directory exists
-                course_directory = os.path.join("Courses", str(course_id))
-        
-                load_dotenv()  # Load environment variables from .env file
-
-                API_TOKEN = os.getenv("API_KEY")
-                headers = {
-                    'Authorization': f'Bearer {API_TOKEN}'
-                }
-
-                # Download the file into the course directory
-                file_path = os.path.join(course_directory, file["filename"])
-                try:
-                    downloadCourseFile(file["filename"], file["url"], file_path, headers)
-
-                    print(f"Downloaded file {file['filename']} to {course_directory}")
-                except Exception as e:
-                    print(f"Failed to download file {file['filename']}: {e}")
-
+        print_status(f"Prepared {len(prepared_data)} files for Weaviate from course {course_id}.")
         return prepared_data
 
     except FileNotFoundError:
-        print(f"Error: File not found at {json_file_path}")
+        print_warning(f"Files JSON not found at {files_json_path}")
         return []
     except json.JSONDecodeError:
-        print(f"Error: Failed to decode JSON from {json_file_path}")
+        print_warning(f"Failed to decode JSON from {files_json_path}")
         return []
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print_warning(f"An unexpected error occurred in prepare_files_for_weaviate: {e}")
         return []
 
 
@@ -265,7 +274,7 @@ def prepare_chunks_for_weaviate(chunks: list[str]):
     return prepared
 
 
-def insert_courses_into_weaviate(client, json_file_path: str):
+def insert_courses_into_weaviate(client, courses_prepared_data: list):
     """
     Reads course data from a JSON file, prepares it, and inserts it into the Weaviate database.
 
@@ -273,11 +282,8 @@ def insert_courses_into_weaviate(client, json_file_path: str):
         client (weaviate.Client): The Weaviate client instance.
         json_file_path (str): Path to the JSON file containing course data.
     """
-    # Prepare the course data
-    courses = prepare_courses_for_weaviate(json_file_path)
-
-    if not courses:
-        print("No courses to insert.")
+    if not courses_prepared_data:
+        print_status("No prepared course data to insert.")
         return
 
     # Get the Course collection
@@ -285,27 +291,22 @@ def insert_courses_into_weaviate(client, json_file_path: str):
 
     # Go through each course and add it to the collection
     with courses_collection.batch.dynamic() as batch:
-        for course in courses:
-            
-            # Add course object
+        for course_props in courses_prepared_data:
+            # Generate a Weaviate-specific UUID based on Canvas course_id to ensure idempotency
+            weaviate_uuid = generate_uuid5(str(course_props["course_id"]), "Course")
             batch.add_object(
-                properties={
-                    "name": course["name"],
-                    "course_id": course["course_id"],
-                    "course_code": course["course_code"],
-                    "start_date": course["start_date"],
-                    "end_date": course["end_date"],
-                    "uuid": course["uuid"]
-                },
-                uuid=generate_uuid5(course["course_id"])
+                properties=course_props,
+                uuid=weaviate_uuid
             )
 
         # Check for failed objects
     if len(courses_collection.batch.failed_objects) > 0:
-        print(f"Failed to import {len(courses_collection.batch.failed_objects)} course objects")
+        print_warning(f"Failed to import {len(courses_collection.batch.failed_objects)} course objects.")
+    else:
+        print_status(f"Successfully inserted/updated {len(courses_prepared_data)} course objects.")
 
 
-def insert_files_into_weaviate(client, json_file_path: str, course_id: int):
+def insert_files_into_weaviate(client, files_prepared_data: list, course_id: int):
     """
     Reads file data from a JSON file, prepares it, and inserts it into the Weaviate database.
 
@@ -314,125 +315,99 @@ def insert_files_into_weaviate(client, json_file_path: str, course_id: int):
         json_file_path (str): Path to the JSON file containing file data.
         course_id (int): ID of the course to which the files belong.
     """
-    # Prepare the file data
-    files = prepare_files_for_weaviate(json_file_path, course_id)
-
-    if not files:
-        print("No files to insert.")
+    if not files_prepared_data:
+        print_status(f"No prepared file data to insert for course {course_id}.")
         return
 
     # Get the File collection
     files_collection = client.collections.get("File")
+    
+    # Collect all chunks from all files first, then batch insert them
+    all_chunks_to_insert_with_vectors = []
 
     # Go through each file and add it to the collection
-    with files_collection.batch.dynamic() as batch:
-        for file in files:
+    with files_collection.batch.dynamic() as file_batch:
+        for file_props in files_prepared_data:
             # Check if the file type is supported
-            if file["file_type"] in ["pdf", "ppt", "doc", "text"]:
+            file_extension = file_props.get("filename", "").split('.')[-1].lower()
+            supported_for_chunking = file_extension in ["pdf", "pptx", "docx", "txt"]
+
+            if not supported_for_chunking:
+                print_status(f"File type '{file_extension}' for '{file_props['filename']}' is not supported for text chunking. Inserting metadata only.")
+
+            # Generate a Weaviate-specific UUID for the file object
+            weaviate_file_uuid = generate_uuid5(str(file_props["file_id"]), "File")
+            
+            file_batch.add_object(
+                properties=file_props, # file_props now includes local_file_path
+                uuid=weaviate_file_uuid
+            )
+
+            if supported_for_chunking:
+                print_status(f"Processing file for chunking: {file_props['local_file_path']}")
+                # Extract text and create chunks
+                text = ""
                 try:
-                    # Add file object
-                    batch.add_object(
-                        properties={
-                            "file_id": file["file_id"],
-                            "uuid": file["uuid"],
-                            "display_name": file["display_name"],
-                            "file_type": file["file_type"],
-                            "file_path": file["file_path"],
-                            "url": file["url"],
-                            "size_bytes": file["size_bytes"],
-                            "created_at": file["created_at"],
-                            "modified_at": file["modified_at"],
-                            "filename": file["filename"],
-                            "course_id": course_id
-                        },
-                        uuid=generate_uuid5(file["file_id"])
+                    if file_extension == 'pdf':
+                        text = extractTextFromPdf(file_props["local_file_path"])
+                    elif file_extension == 'pptx':
+                        text = extractTextFromPPTX(file_props["local_file_path"])
+                    elif file_extension == 'docx':
+                        text = extractTextFromDocx(file_props["local_file_path"])
+                    elif file_extension == 'txt':
+                        text = extractTextFromTxt(file_props["local_file_path"])
+                except Exception as e:
+                    print_warning(f"Failed to extract text from {file_props['local_file_path']}: {e}")
+                    continue
+
+                if not text.strip():
+                    print_status(f"No text extracted from {file_props['filename']}. Skipping chunk insertion.")
+                    continue
+
+                chunks_text = semantic_chunking(text)
+                if not chunks_text:
+                    print_status(f"No chunks created from {file_props['filename']}. Skipping chunk insertion.")
+                    continue
+                
+                prepared_chunks_props = prepare_chunks_for_weaviate(chunks_text) # List of dicts with chunk_text, chunk_index
+
+                for chunk_data in prepared_chunks_props:
+                    chunk_vector = encode_text(chunk_data["chunk_text"])
+                    
+                    chunk_full_props = {
+                        "chunk_text": chunk_data["chunk_text"],
+                        "chunk_index": chunk_data["chunk_index"],
+                        "file_id": file_props["file_id"], # Canvas file_id
+                        "course_id": course_id,           # Canvas course_id
+                        "file_name": file_props["filename"]
+                    }
+                    # Weaviate UUID for the chunk
+                    chunk_uuid = generate_uuid5(f'{file_props["file_id"]}_{chunk_data["chunk_index"]}', "Chunk")
+                    all_chunks_to_insert_with_vectors.append(
+                        {"properties": chunk_full_props, "vector": chunk_vector.tolist(), "uuid": chunk_uuid} # Ensure vector is list
                     )
-                    print(f"Inserted file: {file['display_name']}")
-                except Exception as e:
-                    print(f"Failed to insert file {file['display_name']}: {e}")
+                    
+    if len(files_collection.batch.failed_objects) > 0:
+        print_warning(f"Failed to import {len(files_collection.batch.failed_objects)} file objects for course {course_id}.")
+    else:
+        print_status(f"Successfully inserted/updated file metadata for course {course_id}.")
 
-                # chunk the text and insert chunk into Weaviate
-                try:
-                    # Insert text chunks into Weaviate
-                    insert_text_chunks_into_weaviate(client, course_id, file["display_name"])
-
-                except Exception as e:
-                    print(f"Failed to insert file {file['display_name']}: {e}")
-
-
-def insert_text_chunks_into_weaviate(client, course_id: int, file_name: str, file_id: int):
-    """
-    Reads a text-based file, extracts text, chunks it semantically,
-    and inserts the chunks into the Weaviate database.
-
-    Args:
-        client (weaviate.Client): The Weaviate client instance.
-        course_id (int): ID of the course to which the file belongs.
-        file_name (str): Name of file.
-        file_id (int): ID of the file.
-    """
-    # Path to the text file
-    text_file_path = f'Courses/{course_id}/{file_name}'
-
-    # Determine extraction method based on file type
-    file_extension = text_file_path.split('.')[-1].lower()
-
-
-    # Extract text from the file
-    text = ""
-    
-    try:
-        if file_extension == 'pdf':
-            text = extractTextFromPdf(text_file_path)
-        elif file_extension == 'pptx':
-            text = extractTextFromPPTX(text_file_path)
-        elif file_extension == 'docx':
-            text = extractTextFromDocx(text_file_path)
-        elif file_extension == 'txt':
-            text = extractTextFromTxt(text_file_path)
-        else:
-            print(f"Unsupported file type: {file_extension}")
-            return
-    except Exception as e:
-        print(f"Failed to extract text from {text_file_path}: {e}")
-        return
-
-    if not text.strip():
-        print("No text extracted to insert.")
-        return
-
-
-    # Perform semantic chunking
-    chunks = semantic_chunking(text)
-
-    if not chunks:
-        print("No chunks created from the text.")
-        return
-
-    # Prepare chunks for insertion
-    prepared_chunks = prepare_chunks_for_weaviate(chunks)
-
-    # Get the Chunk collection
-    chunks_collection = client.collections.get("Chunk")
-
-    # Go through each chunk and add it to the collection
-    with chunks_collection.batch.dynamic() as batch:
-        for chunk in prepared_chunks:
-            try:
-                batch.add_object(
-                    properties={
-                        "chunk_text": chunk["chunk_text"],
-                        "chunk_index": chunk["chunk_index"],
-                        "file_id": file_id,
-                        "course_id": course_id,
-                        "file_name": file_name
-                    },
-                    uuid=generate_uuid5(chunk["chunk_index"] + file_id),
-                    vector=encode_text(chunk["chunk_text"])
+    # Batch insert all collected chunks
+    if all_chunks_to_insert_with_vectors:
+        chunks_collection = client.collections.get("Chunk")
+        with chunks_collection.batch.dynamic() as chunk_batch:
+            for item in all_chunks_to_insert_with_vectors:
+                chunk_batch.add_object(
+                    properties=item["properties"],
+                    vector=item["vector"],
+                    uuid=item["uuid"]
                 )
-                print(f"Inserted chunk {chunk['chunk_index']} from {file_name}")
-            except Exception as e:
-                print(f"Failed to insert chunk {chunk['chunk_index']} from {file_name}: {e}")
+        if len(chunks_collection.batch.failed_objects) > 0:
+            print_warning(f"Failed to import {len(chunks_collection.batch.failed_objects)} chunk objects for course {course_id}.")
+        else:
+            print_status(f"Successfully inserted {len(all_chunks_to_insert_with_vectors)} chunk objects for course {course_id}.")
+    else:
+        print_status(f"No chunks were prepared for insertion for course {course_id}.")
 
 
 def pull_files_from_weaviate(client, course_id: int):
@@ -447,16 +422,14 @@ def pull_files_from_weaviate(client, course_id: int):
     collection = client.collections.get("File")
 
     # Get the course object
-    files_response = collection.query.fetch_objects(
-        filters=Filter.by_property("course_id").equal(course_id)
-    )
-
-    # Check if the course exists
-    if not files_response:
-        print(f"Course with ID {course_id} not found.")
-        return
-
-    return files_response.objects
+    try:
+        response = collection.query.fetch_objects(
+            filters=wq.Filter.by_property("course_id").equal(course_id) # Use wq.Filter
+        )
+        return response.objects
+    except Exception as e:
+        print_warning(f"Error pulling files from Weaviate for course {course_id}: {e}")
+        return []
 
 
 def verify_objects_in_collection(client, collection_name: str):
@@ -472,12 +445,12 @@ def verify_objects_in_collection(client, collection_name: str):
         collection = client.collections.get(collection_name)    
         
         for item in collection.iterator():
-            print(item.uuid, item.properties)
+            print_status(f"UUID: {item.uuid}, Properties: {item.properties}")
     except Exception as e:
-        print(f"Error querying the database: {e}")
+        print_warning(f"Error querying collection '{collection_name}': {e}")
 
 
-def search_weaviate(client, query: str, collection_name: str):
+def search_weaviate(client, query_text: str, course_id: int = None, limit: int = 10):
     """
     Searches for a query in the specified Weaviate collection.
 
@@ -490,14 +463,23 @@ def search_weaviate(client, query: str, collection_name: str):
         list: A list of search results.
     """
     try:
-        # Get the collection
-        collection = client.collections.get(collection_name)
+        chunks_collection = client.collections.get("Chunk")
+        query_vector = encode_text(query_text).tolist() 
 
-        # Encode the query into a vector embedding
-        querty_vector = encode_text(query)
+        query_filters = None
+        if course_id is not None:
+            query_filters = wq.Filter.by_property("course_id").equal(course_id)
 
-        results = collection.query.near_vector(near_vector=querty_vector, limit=5,  return_metadata=wq.MetadataQuery(distance=True))
-        return results
+        results = chunks_collection.query.near_vector(
+            near_vector=query_vector,
+            limit=limit,
+            filters=query_filters,
+            return_metadata=wq.MetadataQuery(distance=True, score=True) # Added score
+        )
+        
+        print_status(f"Search found {len(results.objects)} results.")
+    
+        return results.objects
     except Exception as e:
-        print(f"Error querying the database: {e}")
+        print_warning(f"Error searching Weaviate: {e}")
         return []
