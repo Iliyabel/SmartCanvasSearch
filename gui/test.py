@@ -244,7 +244,6 @@ class CourseSelectionScreen(QWidget):
         self.courses_data = [] # Reset
         try:
             # Path to ClassList.json relative to the project root
-            # SCRIPT_DIR_GUI and PROJECT_ROOT_GUI are defined at the top of test.py
             json_file_path = os.path.join(PROJECT_ROOT_GUI, "resources", "ClassList.json")
             
             if not os.path.exists(json_file_path):
@@ -256,7 +255,7 @@ class CourseSelectionScreen(QWidget):
 
         except Exception as e:
             print(f"Error loading courses in CourseSelectionScreen: {e}")
-            self.courses_data = [] # Ensure it's empty on error
+            self.courses_data = [] 
         
         if not self.courses_data:
             self.no_courses_label = QLabel("No courses found or failed to load.\nEnsure ClassList.json is populated and accessible.")
@@ -455,12 +454,62 @@ class MainWindow(QMainWindow): # Renamed from ChatWindow
         self.welcome_screen.token_submitted.connect(self.handle_token_submission)
         self.course_selection_screen.course_selected.connect(self.handle_course_selection)
         self.chat_screen.back_to_courses_button.clicked.connect(self.show_course_selection_screen)
+        
+        self.check_existing_token_and_load() # Check for canvas token at startup
+        
+    def check_existing_token_and_load(self):
+        """Checks for an existing token and tries to load courses, skipping WelcomeScreen if successful."""
+        saved_token_path = os.path.join(PROJECT_ROOT_GUI, "resources", "canvas_token.txt")
+        token = None
+        
+        if os.path.exists(saved_token_path):
+            try:
+                with open(saved_token_path, "r") as f:
+                    token = f.read().strip()
+                if token:
+                    print("Found saved token. Attempting to load courses automatically.")
+                    self.canvas_token = token # Store 
+                else:
+                    print("Saved token file is empty.")
+                    token = None 
+            except IOError as e:
+                print(f"Error reading saved token: {e}")
+                token = None
 
-        # Connect signals
-        self.course_selection_screen.course_selected.connect(self.handle_course_selection)
-        
-        self.show_welcome_screen() # Start with welcome screen
-        
+        if token: # If token successfully read from the file
+            # Load .env for BASE_URL
+            dotenv_path = os.path.join(PROJECT_ROOT_GUI, ".env")
+            
+            if os.path.exists(dotenv_path):
+                load_dotenv(dotenv_path)
+                print(f"Loaded .env file from: {dotenv_path}")
+            else:
+                print(f"Warning: .env file not found at {dotenv_path}. Cannot auto-fetch classes.")
+                self.show_welcome_screen() # Failed, display welcome screen
+                return
+
+            BASE_URL = os.getenv("BASE_URL")
+            if not BASE_URL:
+                print("Error: BASE_URL not found for auto-fetch. Please configure .env.")
+                self.show_welcome_screen() # Failed, display welcome screen
+                return
+
+            headers = {"Authorization": f"Bearer {token}"}
+            print("MainWindow: Auto-fetching classes with saved token...")
+            result = gu.getAllClasses(BASE_URL, headers) # Updates ClassList.json
+            
+            if result == "Successful":
+                print("MainWindow: Auto-fetched and saved class list successfully.")
+            else:
+                print("MainWindow: Failed to auto-fetch class list with saved token.")
+            
+            # Load courses into the selection screen
+            self.course_selection_screen.load_and_display_courses()
+            self.show_course_selection_screen() # Skips the WelcomeScreen
+        else:
+            # Error reading it
+            print("No valid saved token found. Displaying Welcome Screen.")
+            self.show_welcome_screen()
 
     def show_welcome_screen(self):
         self.stacked_widget.setCurrentIndex(0)

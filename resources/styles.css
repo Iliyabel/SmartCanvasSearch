@@ -136,7 +136,7 @@ Qlabel#no_courses_label {
 QLabel#selected_course_label {
     font-family: "Arial";
     font-size: 16px;
-    color: rgb(112, 76, 76);
+    color: white;
     font-weight: bold;
     background-color: #397b58;
     border-radius: 16px;
