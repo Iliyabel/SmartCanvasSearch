@@ -265,43 +265,6 @@ def getCourseTXTMaterial(classId: int, headers: dict) -> str:
     return get_specific_course_material(classId, headers, '.txt')
 
 
-# Function to download a course file given filename and file_path
-def downloadCourseFile(filename: str, download_url: str, file_path: str, headers: dict) -> str:
-
-    """
-    Download a course file from the given URL and save it to the specified file path.
-    
-    Args:
-        filename (str): The name of the file to be downloaded.
-        download_url (str): The URL from which to download the file.
-        file_path (str): The local path where the file will be saved.
-        headers (dict): The headers to include in the request.
-
-    Returns:
-        str: "Successful" if the download was successful, otherwise "ERROR".
-
-    This function also checks if the file already exists before downloading.
-    If the file already exists, it skips the download and returns "File already exists".
-    If the download is successful, it saves the file locally and returns "Successful".
-    """
-    import requests
-
-    # Make the request to download the file
-    response = requests.get(download_url, headers=headers)
-
-    # Check if the request was successful
-    if response.status_code == 200:
-        
-        # Save the file locally
-        with open(file_path, 'wb') as file:
-            file.write(response.content)
-        print(f"DOWNLOADED: {filename}")
-        return "Successful"
-    else:
-        print(f"ERROR: Failed to download {filename}. Status code: {response.status_code}")
-        return "ERROR"
-
-
 # Function to pull text given a powerpoint path
 def extractTextFromPPTX(pptx_path: str) -> str:
     """
