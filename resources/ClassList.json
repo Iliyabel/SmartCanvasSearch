@@ -1,5 +1,49 @@
 [
     {
+        "id": 1817171,
+        "name": "BISAES 367 A Sp 25: Exploring American Culture: Race, Ethnicity, And Immigration",
+        "account_id": 103809,
+        "uuid": "H1abiZsE1jnlVB80NrzGJE8ejoKvIwODEgu030WQ",
+        "start_at": null,
+        "grading_standard_id": null,
+        "is_public": false,
+        "created_at": "2025-01-17T13:13:24Z",
+        "course_code": "BISAES 367 A",
+        "default_view": "wiki",
+        "root_account_id": 83919,
+        "enrollment_term_id": 4562,
+        "license": "private",
+        "grade_passback_setting": null,
+        "end_at": null,
+        "public_syllabus": true,
+        "public_syllabus_to_auth": false,
+        "storage_quota_mb": 2097,
+        "is_public_to_auth_users": false,
+        "homeroom_course": false,
+        "course_color": null,
+        "friendly_name": null,
+        "apply_assignment_group_weights": false,
+        "calendar": {
+            "ics": "https://canvas.uw.edu/feeds/calendars/course_H1abiZsE1jnlVB80NrzGJE8ejoKvIwODEgu030WQ.ics"
+        },
+        "time_zone": "America/Los_Angeles",
+        "blueprint": false,
+        "template": false,
+        "enrollments": [
+            {
+                "type": "student",
+                "role": "StudentEnrollment",
+                "role_id": 3490,
+                "user_id": 4399333,
+                "enrollment_state": "active",
+                "limit_privileges_to_course_section": false
+            }
+        ],
+        "hide_final_grades": false,
+        "workflow_state": "available",
+        "restrict_enrollments_to_course_dates": false
+    },
+    {
         "id": 1675518,
         "name": "CSS 301 E Au 23: Technical Writing For Computing Professionals",
         "account_id": 85780,
@@ -187,47 +231,7 @@
     },
     {
         "id": 1675550,
-        "name": "CSS 360 C Au 23: Software Engineering",
-        "account_id": 85780,
-        "uuid": "AJj5BHk8VsJVnnnt849znDRHA4Y1fcsSrw8qm5dK",
-        "start_at": null,
-        "grading_standard_id": null,
-        "is_public": false,
-        "created_at": "2023-04-18T20:43:28Z",
-        "course_code": "CSS 360 C",
-        "default_view": "syllabus",
-        "root_account_id": 83919,
-        "enrollment_term_id": 4418,
-        "license": "private",
-        "grade_passback_setting": null,
-        "end_at": "2025-03-24T07:00:00Z",
-        "public_syllabus": false,
-        "public_syllabus_to_auth": false,
-        "storage_quota_mb": 2097,
-        "is_public_to_auth_users": false,
-        "homeroom_course": false,
-        "course_color": null,
-        "friendly_name": null,
-        "apply_assignment_group_weights": true,
-        "calendar": {
-            "ics": "https://canvas.uw.edu/feeds/calendars/course_AJj5BHk8VsJVnnnt849znDRHA4Y1fcsSrw8qm5dK.ics"
-        },
-        "time_zone": "America/Los_Angeles",
-        "blueprint": false,
-        "template": false,
-        "enrollments": [
-            {
-                "type": "student",
-                "role": "StudentEnrollment",
-                "role_id": 3490,
-                "user_id": 4399333,
-                "enrollment_state": "active",
-                "limit_privileges_to_course_section": false
-            }
-        ],
-        "hide_final_grades": false,
-        "workflow_state": "available",
-        "restrict_enrollments_to_course_dates": true
+        "access_restricted_by_date": true
     },
     {
         "id": 1714815,
@@ -405,7 +409,7 @@
                 "limit_privileges_to_course_section": false
             }
         ],
-        "hide_final_grades": true,
+        "hide_final_grades": false,
         "workflow_state": "available",
         "restrict_enrollments_to_course_dates": true
     },
@@ -458,6 +462,50 @@
         "access_restricted_by_date": true
     },
     {
+        "id": 1817143,
+        "name": "CSS 481 A Sp 25: Web Programming And Applications",
+        "account_id": 85780,
+        "uuid": "SBvP9rh5XzdQNcPZD7Z7UfetxZdiai0lwBUCPNqf",
+        "start_at": null,
+        "grading_standard_id": null,
+        "is_public": false,
+        "created_at": "2025-01-17T13:13:23Z",
+        "course_code": "CSS 481 A",
+        "default_view": "syllabus",
+        "root_account_id": 83919,
+        "enrollment_term_id": 4562,
+        "license": "private",
+        "grade_passback_setting": null,
+        "end_at": null,
+        "public_syllabus": false,
+        "public_syllabus_to_auth": false,
+        "storage_quota_mb": 2097,
+        "is_public_to_auth_users": false,
+        "homeroom_course": false,
+        "course_color": null,
+        "friendly_name": null,
+        "apply_assignment_group_weights": true,
+        "calendar": {
+            "ics": "https://canvas.uw.edu/feeds/calendars/course_SBvP9rh5XzdQNcPZD7Z7UfetxZdiai0lwBUCPNqf.ics"
+        },
+        "time_zone": "America/Los_Angeles",
+        "blueprint": false,
+        "template": false,
+        "enrollments": [
+            {
+                "type": "student",
+                "role": "StudentEnrollment",
+                "role_id": 3490,
+                "user_id": 4399333,
+                "enrollment_state": "active",
+                "limit_privileges_to_course_section": false
+            }
+        ],
+        "hide_final_grades": false,
+        "workflow_state": "available",
+        "restrict_enrollments_to_course_dates": false
+    },
+    {
         "id": 1735715,
         "name": "CSS 490 A Sp 24: Special Topics In Computing And Software Systems",
         "account_id": 85780,
@@ -500,6 +548,50 @@
         "hide_final_grades": false,
         "workflow_state": "available",
         "restrict_enrollments_to_course_dates": true
+    },
+    {
+        "id": 1817164,
+        "name": "CSS 497 D Sp 25: Computer Science And Software Engineering Capstone",
+        "account_id": 85780,
+        "uuid": "8ZIc4mvkOz5Zencz6evYaxue4WH8MOArdh6weijZ",
+        "start_at": null,
+        "grading_standard_id": null,
+        "is_public": false,
+        "created_at": "2025-01-17T13:13:24Z",
+        "course_code": "CSS 497 D",
+        "default_view": "syllabus",
+        "root_account_id": 83919,
+        "enrollment_term_id": 4562,
+        "license": "private",
+        "grade_passback_setting": null,
+        "end_at": null,
+        "public_syllabus": false,
+        "public_syllabus_to_auth": false,
+        "storage_quota_mb": 2097,
+        "is_public_to_auth_users": false,
+        "homeroom_course": false,
+        "course_color": null,
+        "friendly_name": null,
+        "apply_assignment_group_weights": true,
+        "calendar": {
+            "ics": "https://canvas.uw.edu/feeds/calendars/course_8ZIc4mvkOz5Zencz6evYaxue4WH8MOArdh6weijZ.ics"
+        },
+        "time_zone": "America/Los_Angeles",
+        "blueprint": false,
+        "template": false,
+        "enrollments": [
+            {
+                "type": "student",
+                "role": "StudentEnrollment",
+                "role_id": 3490,
+                "user_id": 4399333,
+                "enrollment_state": "active",
+                "limit_privileges_to_course_section": false
+            }
+        ],
+        "hide_final_grades": true,
+        "workflow_state": "available",
+        "restrict_enrollments_to_course_dates": false
     },
     {
         "id": 1803931,

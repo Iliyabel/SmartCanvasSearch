@@ -1,6 +1,10 @@
 import os
 import json
 
+# Determine project root from general_utils.py's location
+UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT_FROM_UTILS = os.path.dirname(UTILS_DIR)
+
 #nltk.download('punkt_tab')
 
 
@@ -91,11 +95,24 @@ def getAllClasses(BASE_URL: str, headers: dict) -> str:
     # Check if request was successful
     if response.status_code == 200:
         courses = response.json()
-        with open("ClassList.json", "w") as file:
-            json.dump(courses, file, indent=4)  
-        return "Successful"
+        
+        # Ensure the resources directory exists
+        resources_dir = os.path.join(PROJECT_ROOT_FROM_UTILS, "resources")
+        if not os.path.exists(resources_dir):
+            os.makedirs(resources_dir)
+            print(f"Created directory: {resources_dir}")
+
+        classlist_path = os.path.join(resources_dir, "ClassList.json")
+        try:
+            with open(classlist_path, "w") as file:
+                json.dump(courses, file, indent=4)
+            print(f"Successfully saved ClassList to: {classlist_path}")
+            return "Successful"
+        except IOError as e:
+            print(f"Error writing ClassList.json: {e}")
+            return "ERROR"
     else:
-        print(f"Error: {response.status_code}, {response.text}")
+        print(f"Error fetching courses: {response.status_code}, {response.text}")
         return "ERROR"
     
 

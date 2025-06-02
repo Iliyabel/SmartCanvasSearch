@@ -2,14 +2,20 @@ import sys
 import os
 # import json
 from utils import general_utils as gu
+from dotenv import load_dotenv
 
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QScrollArea, QSizePolicy, 
     QGraphicsDropShadowEffect, QStackedWidget, QGridLayout
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QFont, QIcon
+
+# Determine project root from gui/test.py's location
+SCRIPT_DIR_GUI = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT_GUI = os.path.dirname(SCRIPT_DIR_GUI)
+
 
 class WelcomeScreen(QWidget):
     token_submitted = pyqtSignal(str)
@@ -121,10 +127,9 @@ class WelcomeScreen(QWidget):
 
     def on_submit(self):
         token = self.token_input.text().strip()
-        if token:
-            self.token_submitted.emit(token)
-        else:
-            # Optionally, show an error message if token is empty
+        
+        if not token:
+            # Show an error message if token is empty
             error_label = self.findChild(QLabel, "error_label_token")
             if not error_label:
                 error_label = QLabel("Please enter a valid Canvas Access Token.")
@@ -132,6 +137,57 @@ class WelcomeScreen(QWidget):
                 index_of_token_layout = self.overall_layout.indexOf(self.token_input_layout)
                 self.overall_layout.insertWidget(index_of_token_layout, error_label, 0, Qt.AlignmentFlag.AlignCenter)
             error_label.setVisible(True)
+            return
+
+        # Hide error message if it was visible
+        error_label = self.findChild(QLabel, "error_label_token")
+        if error_label:
+            error_label.setVisible(False)
+
+        # 1. Save the token to resources/canvas_token.txt
+        resources_dir = os.path.join(PROJECT_ROOT_GUI, "resources")
+        if not os.path.exists(resources_dir):
+            os.makedirs(resources_dir)
+            print(f"Created directory: {resources_dir}")
+        
+        token_file_path = os.path.join(resources_dir, "canvas_token.txt")
+        try:
+            with open(token_file_path, "w") as f:
+                f.write(token)
+            print(f"Canvas token saved to: {token_file_path}")
+        except IOError as e:
+            print(f"Error saving token to file: {e}")
+        
+        # 2. Load BASE_URL from .env file
+        dotenv_path = os.path.join(PROJECT_ROOT_GUI, ".env")
+        if os.path.exists(dotenv_path):
+            load_dotenv(dotenv_path)
+            print(f"Loaded .env file from: {dotenv_path}")
+        else:
+            print(f"Warning: .env file not found at {dotenv_path}. Cannot fetch classes.")
+            self.token_submitted.emit(token) # Still emit to move to next screen, but classes won't be fresh
+            return
+
+        BASE_URL = os.getenv("BASE_URL")
+
+        if not BASE_URL:
+            print("Error: BASE_URL not found in .env file or environment variables.")
+            self.token_submitted.emit(token) # Still emit
+            return
+        
+        # 3. Call getAllClasses
+        headers = {
+            "Authorization": f"Bearer {token}"
+        }
+        
+        print("Attempting to fetch all classes...")
+        result = gu.getAllClasses(BASE_URL, headers)
+        if result == "Successful":
+            print("Successfully fetched and saved class list.")
+        else:
+            print("Failed to fetch class list.")
+
+        self.token_submitted.emit(token)
 
 
 class CourseSelectionScreen(QWidget):
@@ -165,31 +221,54 @@ class CourseSelectionScreen(QWidget):
         self.buttons_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Load courses data from JSON file
-        # self.courses_data = [{'name': "course1", 'id': 1234}, {'name': "course2", 'id': 1234}] # Placeholder for course data
-        self.course_data = [] # Initialize empty list for course data
+        self.courses_data = []
+        self.no_courses_label = QLabel("Fetching courses or no courses found.\nPlease submit a token if you haven't.") # Initial message
+        self.no_courses_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.buttons_layout.addWidget(self.no_courses_label, 0, 0, 1, 2) 
+        self.no_courses_label.setVisible(True) 
+        
+        self.scroll_area_courses.setWidget(self.scroll_content_courses_widget)
+        self.layout.addWidget(self.scroll_area_courses, 1) # Scroll area takes expanding space
+        # --- End of Scroll Area for Course Buttons ---
+
+
+    def load_and_display_courses(self):
+        """Loads courses from ClassList.json and populates the buttons."""
+        # Clear previous buttons and the "no courses" label
+        while self.buttons_layout.count():
+            item = self.buttons_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
+        self.courses_data = [] # Reset
         try:
-            json_file_path = os.path.join("resources", "ClassList.json")
+            # Path to ClassList.json relative to the project root
+            # SCRIPT_DIR_GUI and PROJECT_ROOT_GUI are defined at the top of test.py
+            json_file_path = os.path.join(PROJECT_ROOT_GUI, "resources", "ClassList.json")
             
             if not os.path.exists(json_file_path):
-                print(f"Relative path {json_file_path} not found. Trying direct path.")
-
-            self.courses_data = gu.extract_course_name_id_pairs(json_file_path)
-            print(f"Loaded {len(self.courses_data)} courses for selection.")
+                print(f"CourseSelectionScreen: ClassList.json not found at {json_file_path}. Cannot load courses.")
+                self.courses_data = []
+            else:
+                self.courses_data = gu.extract_course_name_id_pairs(json_file_path)
+                print(f"CourseSelectionScreen: Loaded {len(self.courses_data)} courses for selection.")
 
         except Exception as e:
             print(f"Error loading courses in CourseSelectionScreen: {e}")
+            self.courses_data = [] # Ensure it's empty on error
         
         if not self.courses_data:
-            no_courses_label = QLabel("No courses found or failed to load.\nCheck 'resources/ClassList.json'.")
-            no_courses_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.buttons_layout.addWidget(no_courses_label, 0, 0, 1, 2)
+            self.no_courses_label = QLabel("No courses found or failed to load.\nEnsure ClassList.json is populated and accessible.")
+            self.no_courses_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.buttons_layout.addWidget(self.no_courses_label, 0, 0, 1, 2)
+            self.no_courses_label.setVisible(True)
         else:
+            self.no_courses_label.setVisible(False) # Hide if courses are found
             row, col = 0, 0
-            max_cols = 2 
+            max_cols = 2
             for course_info in self.courses_data:
                 course_name = course_info.get("name", "Unnamed Course")
-                # course_id = course_info.get("id") # ID is in course_info
-
                 button = QPushButton(course_name)
                 button.setObjectName("course_button")
                 shadow1 = QGraphicsDropShadowEffect(blurRadius=4, xOffset=0, yOffset=2)
@@ -202,10 +281,6 @@ class CourseSelectionScreen(QWidget):
                 if col >= max_cols:
                     col = 0
                     row += 1
-        
-        self.scroll_area_courses.setWidget(self.scroll_content_courses_widget)
-        self.layout.addWidget(self.scroll_area_courses, 1) # Scroll area takes expanding space
-        # --- End of Scroll Area for Course Buttons ---
 
     def course_button_clicked(self, course_name):
         self.course_selected.emit(course_name)
@@ -398,9 +473,8 @@ class MainWindow(QMainWindow): # Renamed from ChatWindow
         
     def handle_token_submission(self, token):
         self.canvas_token = token
-        print(f"Canvas Token Stored: {'*' * len(token)}") # For debugging, don't print the actual token in production
-        # Here would probably validate the token or use it to fetch courses
-        # For now, just proceed to course selection
+        print(f"Canvas Token Stored: {'*' * len(token)}")
+        self.course_selection_screen.load_and_display_courses() # Call the refresh method
         self.show_course_selection_screen()
 
     def handle_course_selection(self, course_name):

@@ -119,6 +119,14 @@ QPushButton#course_button:hover { background-color: #4BA173;}
 
 QPushButton#course_button:pressed { background-color: #145c2c; }
 
+Qlabel#no_courses_label {
+    font-family: "Arial";
+    font-size: 16px;
+    color: #ee1515;
+    font-weight: bold;
+    margin-top: 20px;
+}
+
 /* ==================================== */
 
 
@@ -128,7 +136,7 @@ QPushButton#course_button:pressed { background-color: #145c2c; }
 QLabel#selected_course_label {
     font-family: "Arial";
     font-size: 16px;
-    color: white;
+    color: rgb(112, 76, 76);
     font-weight: bold;
     background-color: #397b58;
     border-radius: 16px;
