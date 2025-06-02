@@ -1,7 +1,8 @@
 import sys
 import os
-# import json
 from utils import general_utils as gu
+from utils.weaviate_manager import WeaviateManager # Import the new manager
+import threading 
 from dotenv import load_dotenv
 
 from PyQt6.QtWidgets import (
@@ -384,6 +385,9 @@ class ChatScreenWidget(QWidget):
         self.run_button.setGraphicsEffect(shadow3)
         self.run_button.clicked.connect(self.handle_user_message)
         self.bottom_input_layout.addWidget(self.run_button)
+        
+        self.run_button.clicked.connect(lambda: self.parent().parent().handle_user_message())
+        self.user_input.returnPressed.connect(lambda: self.parent().parent().handle_user_message())
 
         self.main_layout.addWidget(self.bottom_input_widget, 0, Qt.AlignmentFlag.AlignBottom)
 
@@ -432,7 +436,10 @@ class ChatScreenWidget(QWidget):
         self.add_message_to_chat("Bot", message, False)
 
 
-class MainWindow(QMainWindow): # Renamed from ChatWindow
+class MainWindow(QMainWindow): 
+    # Signal for Weaviate status updates to show in GUI
+    weaviate_status_update = pyqtSignal(str)
+    
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Course Compass")
@@ -463,6 +470,11 @@ class MainWindow(QMainWindow): # Renamed from ChatWindow
         self.course_selection_screen.course_selected.connect(self.handle_course_selection)
         self.chat_screen.back_to_courses_button.clicked.connect(self.show_course_selection_screen)
         
+        self.weaviate_manager = WeaviateManager(project_root=PROJECT_ROOT_GUI)
+        self.weaviate_initialized_for_session = False # Flag to init only once per session
+        
+        self.weaviate_status_update.connect(self.chat_screen.add_bot_message)
+        
         self._load_env_vars() # Load .env once
         self.check_existing_token_and_load() # Check for canvas token at startup
         
@@ -478,6 +490,76 @@ class MainWindow(QMainWindow): # Renamed from ChatWindow
                 print("Warning: BASE_URL not found in .env file.")
         else:
             print(f"Warning: .env file not found at {dotenv_path}.")
+            
+    def closeEvent(self, event):
+        """Handle window close event."""
+        print("MainWindow closing. Shutting down Weaviate service if managed...")
+        self.weaviate_manager.close_connection() # Close client connection first
+        self.weaviate_manager.stop_service() # Stop docker-compose
+        event.accept()
+
+    def _initialize_weaviate_if_needed(self):
+        """Starts Weaviate service, connects client, and ensures schema. Threaded."""
+        if self.weaviate_initialized_for_session:
+            if not self.weaviate_manager.client or not self.weaviate_manager.client.is_ready():
+                # Attempt to reconnect if client lost connection
+                self.weaviate_status_update.emit("Reconnecting to Weaviate...")
+                if not self.weaviate_manager.connect_client():
+                    self.weaviate_status_update.emit("Failed to reconnect Weaviate client.")
+                    return False
+                self.weaviate_status_update.emit("Reconnected to Weaviate.")
+            return True # Already initialized and client seems okay or reconnected
+
+        self.weaviate_status_update.emit("Starting Weaviate service...")
+        if not self.weaviate_manager.start_service():
+            self.weaviate_status_update.emit("Failed to start Weaviate Docker service.")
+            return False
+        self.weaviate_status_update.emit("Weaviate service started. Connecting client...")
+
+        if not self.weaviate_manager.connect_client():
+            self.weaviate_status_update.emit("Failed to connect Weaviate client.")
+            return False
+        self.weaviate_status_update.emit("Weaviate client connected. Ensuring schema...")
+
+        if not self.weaviate_manager.ensure_schema():
+            self.weaviate_status_update.emit("Failed to ensure Weaviate schema.")
+            return False
+        
+        self.weaviate_status_update.emit("Weaviate schema OK. Initializing course metadata...")
+        
+        # Ingest all courses metadata (from ClassList.json) once per session
+        class_list_path = os.path.join(PROJECT_ROOT_GUI, "resources", "ClassList.json")
+        if os.path.exists(class_list_path):
+            if not self.weaviate_manager.ingest_all_courses_metadata(class_list_path):
+                self.weaviate_status_update.emit("Failed to ingest all courses metadata.")
+        else:
+            self.weaviate_status_update.emit("ClassList.json not found, cannot ingest all courses metadata.")
+
+        self.weaviate_initialized_for_session = True
+        self.weaviate_status_update.emit("Weaviate initialized and ready for course data.")
+        return True
+
+    def _run_weaviate_init_threaded(self):
+        # Disable relevant GUI elements during this process
+        thread = threading.Thread(target=self._initialize_weaviate_if_needed, daemon=True)
+        thread.start()
+
+    def _ingest_course_data_threaded(self, course_id):
+        def ingest_task():
+            self.weaviate_status_update.emit(f"Starting data ingestion for course ID: {course_id}...")
+            if self.weaviate_manager.ingest_course_files_and_chunks(course_id):
+                self.weaviate_status_update.emit(f"Successfully ingested data for course ID: {course_id}.")
+            else:
+                self.weaviate_status_update.emit(f"Failed to ingest data for course ID: {course_id}.")
+        
+        # Ensure Weaviate is initialized before ingesting specific course data
+        if not self.weaviate_initialized_for_session:
+            if not self._initialize_weaviate_if_needed(): # This is blocking if called directly
+                 print("Cannot ingest course data: Weaviate initialization failed.")
+                 return
+        
+        thread = threading.Thread(target=ingest_task, daemon=True)
+        thread.start()
         
     def check_existing_token_and_load(self):
         """Checks for an existing token and tries to load courses, skipping WelcomeScreen if successful."""
@@ -551,6 +633,7 @@ class MainWindow(QMainWindow): # Renamed from ChatWindow
         headers = {"Authorization": f"Bearer {self.canvas_token}"}
 
         # --- Perform file operations ---
+        self.weaviate_status_update.emit(f"Downloading files for course ID: {course_id}...") # GUI feedback
         print(f"Fetching file list for course ID: {course_id}...")
         list_result = gu.listCourseMaterial(course_id, self.base_url, headers)
 
@@ -561,11 +644,43 @@ class MainWindow(QMainWindow): # Renamed from ChatWindow
             gu.getCoursePDFMaterial(course_id, headers)
             gu.getCourseDOCXMaterial(course_id, headers)
             gu.getCourseTXTMaterial(course_id, headers) # Call the new function
+            self.weaviate_status_update.emit(f"File download complete for course ID: {course_id}.")
             print(f"Finished attempting to download materials for course {course_id}.")
+
+            # --- Weaviate operations ---        
+            self._ingest_course_data_threaded(course_id)
+            
         else:
-            print(f"Failed to get file list for course {course_id}. Skipping material download.")
-        # --- End file operations ---
+            self.weaviate_status_update.emit(f"Failed to get file list for course {course_id}. Skipping downloads and Weaviate.")
+            print(f"Failed to get file list for course {course_id}. Skipping material download and Weaviate ops.")
 
         self.chat_screen.set_selected_course(course_data)
         self.show_chat_screen()
+    
+    def handle_user_message(self): 
+        user_text = self.chat_screen.user_input.text().strip() # CORRECTED
+        if user_text and self.selected_course_data:
+            course_id = self.selected_course_data.get("id")
+            
+            # Add user's message to chat UI immediately
+            self.chat_screen.add_message_to_chat("You", user_text, True) # MOVED UP
+            self.chat_screen.user_input.clear() # Clear input field immediately
+            
+            # Perform search in a thread
+            def search_task():
+                self.weaviate_status_update.emit(f"Searching for: '{user_text}'...")
+                results = self.weaviate_manager.search_chunks(user_text, course_id=course_id)
+                if results:
+                    bot_response = f"Found {len(results)} relevant chunks for '{user_text}'. Top result: {results[0].properties.get('chunk_text', '')[:100]}..."
+                    self.weaviate_status_update.emit(bot_response)
+
+                else:
+                    self.weaviate_status_update.emit(f"No results found for '{user_text}'.")
+
+
+            search_thread = threading.Thread(target=search_task, daemon=True)
+            search_thread.start()
+            
+            self.chat_screen.user_input.clear()
+            self.chat_screen.add_message_to_chat("You", user_text, True)
 
