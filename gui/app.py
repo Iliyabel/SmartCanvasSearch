@@ -437,8 +437,16 @@ class MainWindow(QMainWindow): # Renamed from ChatWindow
         super().__init__()
         self.setWindowTitle("Course Compass")
         self.setGeometry(500, 100, 1000, 900)
-        self.setWindowIcon(QIcon("resources/icon.png"))
+        
+        icon_path = os.path.join(PROJECT_ROOT_GUI, "resources", "icon.png")
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+        else:
+            print(f"Warning: Main window icon not found at {icon_path}")
+            
         self.canvas_token = None # To store the token
+        self.selected_course_data = None 
+        self.base_url = None # Store base_url
 
         self.stacked_widget = QStackedWidget()
         self.setCentralWidget(self.stacked_widget)
@@ -455,20 +463,33 @@ class MainWindow(QMainWindow): # Renamed from ChatWindow
         self.course_selection_screen.course_selected.connect(self.handle_course_selection)
         self.chat_screen.back_to_courses_button.clicked.connect(self.show_course_selection_screen)
         
+        self._load_env_vars() # Load .env once
         self.check_existing_token_and_load() # Check for canvas token at startup
+        
+    def _load_env_vars(self):
+        """Loads BASE_URL from .env file."""
+        dotenv_path = os.path.join(PROJECT_ROOT_GUI, ".env")
+        if os.path.exists(dotenv_path):
+            load_dotenv(dotenv_path)
+            self.base_url = os.getenv("BASE_URL")
+            if self.base_url:
+                print(f"Loaded BASE_URL from .env: {self.base_url}")
+            else:
+                print("Warning: BASE_URL not found in .env file.")
+        else:
+            print(f"Warning: .env file not found at {dotenv_path}.")
         
     def check_existing_token_and_load(self):
         """Checks for an existing token and tries to load courses, skipping WelcomeScreen if successful."""
         saved_token_path = os.path.join(PROJECT_ROOT_GUI, "resources", "canvas_token.txt")
         token = None
-        
         if os.path.exists(saved_token_path):
             try:
                 with open(saved_token_path, "r") as f:
                     token = f.read().strip()
                 if token:
-                    print("Found saved token. Attempting to load courses automatically.")
-                    self.canvas_token = token # Store 
+                    print("Found saved token.")
+                    self.canvas_token = token 
                 else:
                     print("Saved token file is empty.")
                     token = None 
@@ -476,39 +497,24 @@ class MainWindow(QMainWindow): # Renamed from ChatWindow
                 print(f"Error reading saved token: {e}")
                 token = None
 
-        if token: # If token successfully read from the file
-            # Load .env for BASE_URL
-            dotenv_path = os.path.join(PROJECT_ROOT_GUI, ".env")
-            
-            if os.path.exists(dotenv_path):
-                load_dotenv(dotenv_path)
-                print(f"Loaded .env file from: {dotenv_path}")
-            else:
-                print(f"Warning: .env file not found at {dotenv_path}. Cannot auto-fetch classes.")
-                self.show_welcome_screen() # Failed, display welcome screen
-                return
-
-            BASE_URL = os.getenv("BASE_URL")
-            if not BASE_URL:
-                print("Error: BASE_URL not found for auto-fetch. Please configure .env.")
-                self.show_welcome_screen() # Failed, display welcome screen
-                return
-
+        if token and self.base_url: # Check for both token and base_url
             headers = {"Authorization": f"Bearer {token}"}
             print("MainWindow: Auto-fetching classes with saved token...")
-            result = gu.getAllClasses(BASE_URL, headers) # Updates ClassList.json
+            result = gu.getAllClasses(self.base_url, headers) 
             
             if result == "Successful":
                 print("MainWindow: Auto-fetched and saved class list successfully.")
             else:
                 print("MainWindow: Failed to auto-fetch class list with saved token.")
             
-            # Load courses into the selection screen
             self.course_selection_screen.load_and_display_courses()
-            self.show_course_selection_screen() # Skips the WelcomeScreen
+            self.show_course_selection_screen() 
         else:
-            # Error reading it
-            print("No valid saved token found. Displaying Welcome Screen.")
+            if not token:
+                print("No valid saved token found.")
+            if not self.base_url:
+                print("BASE_URL not configured.")
+            print("Displaying Welcome Screen.")
             self.show_welcome_screen()
 
     def show_welcome_screen(self):
@@ -526,9 +532,40 @@ class MainWindow(QMainWindow): # Renamed from ChatWindow
         self.course_selection_screen.load_and_display_courses() # Call the refresh method
         self.show_course_selection_screen()
 
-    def handle_course_selection(self, course_name):
-        # Might want to use self.canvas_token here to interact with Canvas API
-        print(f"Selected course: {course_name} (using token: {'Token Present' if self.canvas_token else 'No Token'})")
-        self.chat_screen.set_selected_course(course_name)
+    def handle_course_selection(self, course_data: dict):
+        self.selected_course_data = course_data
+        course_name = course_data.get("name", "Unknown Course")
+        course_id = course_data.get("id")
+
+        print(f"Selected course: {course_name} (ID: {course_id})")
+
+        if course_id is None:
+            print("Error: Course ID is missing. Cannot fetch materials.")
+            return
+
+        if not self.canvas_token or not self.base_url:
+            print("Error: Canvas token or BASE_URL is not available. Cannot fetch materials.")
+            self.show_welcome_screen()
+            return
+
+        headers = {"Authorization": f"Bearer {self.canvas_token}"}
+
+        # --- Perform file operations ---
+        print(f"Fetching file list for course ID: {course_id}...")
+        list_result = gu.listCourseMaterial(course_id, self.base_url, headers)
+
+        if list_result == "Successful":
+            print(f"Successfully got file list for course {course_id}. Now downloading materials...")
+            # Download specific file types
+            gu.getCoursePPTXMaterial(course_id, headers)
+            gu.getCoursePDFMaterial(course_id, headers)
+            gu.getCourseDOCXMaterial(course_id, headers)
+            gu.getCourseTXTMaterial(course_id, headers) # Call the new function
+            print(f"Finished attempting to download materials for course {course_id}.")
+        else:
+            print(f"Failed to get file list for course {course_id}. Skipping material download.")
+        # --- End file operations ---
+
+        self.chat_screen.set_selected_course(course_data)
         self.show_chat_screen()
 

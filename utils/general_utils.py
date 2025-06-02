@@ -193,7 +193,7 @@ def downloadCourseFile(filename: str, download_url: str, full_save_path: str, he
         return "ERROR"
 
 
-def _get_specific_course_material(classId: int, headers: dict, file_extension: str) -> str:
+def get_specific_course_material(classId: int, headers: dict, file_extension: str) -> str:
     """Helper function to download files of a specific type for a course."""
     course_files_dir = os.path.join(PROJECT_ROOT_FROM_UTILS, "Courses", str(classId))
     files_json_path = os.path.join(course_files_dir, "files.json")
@@ -243,26 +243,26 @@ def _get_specific_course_material(classId: int, headers: dict, file_extension: s
 def getCoursePPTXMaterial(classId: int, headers: dict) -> str:
     """Downloads all PPTX files for a specific course."""
     from pptx import Presentation # Keep local import for this specific parser if needed later
-    return _get_specific_course_material(classId, headers, '.pptx')
+    return get_specific_course_material(classId, headers, '.pptx')
 
 
 # Function to get list of pdf files in given class
 def getCoursePDFMaterial(classId: int, headers: dict) -> str:
     """Downloads all PDF files for a specific course."""
-    return _get_specific_course_material(classId, headers, '.pdf')
+    return get_specific_course_material(classId, headers, '.pdf')
 
 
 # Function to get list of DOCX files in given class
 def getCourseDOCXMaterial(classId: int, headers: dict) -> str:
     """Downloads all DOCX files for a specific course."""
     from docx import Document # Keep local import
-    return _get_specific_course_material(classId, headers, '.docx')
+    return get_specific_course_material(classId, headers, '.docx')
 
 
 # Function to get list of TXT files in given class
 def getCourseTXTMaterial(classId: int, headers: dict) -> str:
     """Downloads all TXT files for a specific course."""
-    return _get_specific_course_material(classId, headers, '.txt')
+    return get_specific_course_material(classId, headers, '.txt')
 
 
 # Function to download a course file given filename and file_path
