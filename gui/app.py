@@ -643,7 +643,7 @@ class MainWindow(QMainWindow):
             gu.getCoursePPTXMaterial(course_id, headers)
             gu.getCoursePDFMaterial(course_id, headers)
             gu.getCourseDOCXMaterial(course_id, headers)
-            gu.getCourseTXTMaterial(course_id, headers) # Call the new function
+            gu.getCourseTXTMaterial(course_id, headers)
             self.weaviate_status_update.emit(f"File download complete for course ID: {course_id}.")
             print(f"Finished attempting to download materials for course {course_id}.")
 

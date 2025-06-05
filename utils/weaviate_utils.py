@@ -306,6 +306,25 @@ def insert_courses_into_weaviate(client, courses_prepared_data: list):
         print_status(f"Successfully inserted/updated {len(courses_prepared_data)} course objects.")
 
 
+def check_if_chunks_exist_for_file(client, file_id: int, course_id: int) -> bool:
+    """
+    Checks if chunks for a given file_id and course_id already exist in Weaviate.
+    """
+    try:
+        chunks_collection = client.collections.get("Chunk")
+        response = chunks_collection.query.fetch_objects(
+            filters=Filter.all_of([
+                Filter.by_property("file_id").equal(file_id),
+                Filter.by_property("course_id").equal(course_id)
+            ]),
+            limit=1
+        )
+        return len(response.objects) > 0
+    except Exception as e:
+        print_warning(f"Error checking for existing chunks for file_id {file_id}, course_id {course_id}: {e}")
+        return False 
+
+
 def insert_files_into_weaviate(client, files_prepared_data: list, course_id: int):
     """
     Reads file data from a JSON file, prepares it, and inserts it into the Weaviate database.
@@ -331,19 +350,24 @@ def insert_files_into_weaviate(client, files_prepared_data: list, course_id: int
             # Check if the file type is supported
             file_extension = file_props.get("filename", "").split('.')[-1].lower()
             supported_for_chunking = file_extension in ["pdf", "pptx", "docx", "txt"]
+            canvas_file_id = file_props["file_id"] # Get the Canvas file ID
 
             if not supported_for_chunking:
                 print_status(f"File type '{file_extension}' for '{file_props['filename']}' is not supported for text chunking. Inserting metadata only.")
 
             # Generate a Weaviate-specific UUID for the file object
-            weaviate_file_uuid = generate_uuid5(str(file_props["file_id"]), "File")
+            weaviate_file_uuid = generate_uuid5(str(canvas_file_id), "File")
             
             file_batch.add_object(
-                properties=file_props, # file_props now includes local_file_path
+                properties=file_props, 
                 uuid=weaviate_file_uuid
             )
 
             if supported_for_chunking:
+                if check_if_chunks_exist_for_file(client, canvas_file_id, course_id):
+                    print_status(f"SKIPPING chunking: Chunks for file '{file_props['filename']}' (ID: {canvas_file_id}) already exist in Weaviate.")
+                    continue
+                
                 print_status(f"Processing file for chunking: {file_props['local_file_path']}")
                 # Extract text and create chunks
                 text = ""
