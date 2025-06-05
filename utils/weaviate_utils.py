@@ -474,36 +474,191 @@ def verify_objects_in_collection(client, collection_name: str):
         print_warning(f"Error querying collection '{collection_name}': {e}")
 
 
-def search_weaviate(client, query_text: str, course_id: int = None, limit: int = 10):
+def search_weaviate(client, query_text: str, course_id: int = None, limit: int = 10, alpha_hybrid: float = 0.5, context_window: int = 1):
     """
-    Searches for a query in the specified Weaviate collection.
+    Performs a search in the Weaviate "Chunk" collection.
+    Can perform a hybrid search or a pure vector search based on alpha_hybrid.
+    Retrieves context chunks around the primary matches.
 
     Args:
-        client (weaviate.Client): The Weaviate client instance.
-        query (str): The search query.
-        collection_name (str): The name of the collection to search in.
+        client: The Weaviate client.
+        query_text: The text to search for.
+        course_id: Optional course ID to filter by.
+        limit: The number of primary results to return from the initial search.
+        alpha_hybrid: The alpha value for hybrid search (0 for keyword, 1 for vector, 0.5 for balanced).
+        context_window: Number of chunks before and after each primary match to retrieve as context.
+                       Set to 0 to disable context retrieval.
 
     Returns:
-        list: A list of search results.
+        A list of Weaviate result objects (hydrated with properties), sorted by file_id and chunk_index.
     """
+    if not client or not client.is_ready():
+        print_warning("Weaviate client not connected or not ready for search.")
+        return []
+
     try:
         chunks_collection = client.collections.get("Chunk")
-        query_vector = encode_text(query_text).tolist() 
-
-        query_filters = None
+        
+        filters = None
         if course_id is not None:
-            query_filters = wq.Filter.by_property("course_id").equal(course_id)
+            filters = Filter.by_property("course_id").equal(course_id)
 
-        results = chunks_collection.query.near_vector(
-            near_vector=query_vector,
+        print_status(f"Searching for '{query_text}' with limit {limit}, course_id {course_id}, context_window {context_window}")
+
+        # Generate query vector since the collection has no built-in vectorizer
+        query_vector = encode_text(query_text)
+        if query_vector is None:
+            print_warning(f"Could not generate vector for query: {query_text}")
+            return []
+
+        # Perform initial search (hybrid or vector)
+        initial_response = chunks_collection.query.hybrid(
+            query=query_text,
+            vector=query_vector.tolist(),
+            alpha=alpha_hybrid, # 0 (keyword) to 1 (vector)
             limit=limit,
-            filters=query_filters,
-            return_metadata=wq.MetadataQuery(distance=True, score=True) # Added score
+            filters=filters,
         )
         
-        print_status(f"Search found {len(results.objects)} results.")
-    
-        return results.objects
+        initial_matches = initial_response.objects
+        if not initial_matches:
+            print_status("No primary matches found.")
+            return []
+
+        if context_window == 0:
+            print_status(f"Context window is 0, returning {len(initial_matches)} primary matches.")
+            return initial_matches 
+
+        all_relevant_chunks_map = {} # Use UUID as key to remove duplicates
+
+        # Add primary matches and fetch context
+        for matched_chunk in initial_matches:
+            if matched_chunk.uuid not in all_relevant_chunks_map:
+                all_relevant_chunks_map[matched_chunk.uuid] = matched_chunk
+            
+            # Fetch context for this matched_chunk
+            try:
+                original_file_id = matched_chunk.properties.get('file_id')
+                original_chunk_index = matched_chunk.properties.get('chunk_index')
+
+                if original_file_id is None or original_chunk_index is None:
+                    print_warning(f"Skipping context for chunk {matched_chunk.uuid} due to missing file_id or chunk_index.")
+                    continue
+
+                for i in range(1, context_window + 1):
+                    # Previous chunks
+                    prev_chunk_idx_to_find = original_chunk_index - i
+                    if prev_chunk_idx_to_find >= 0:
+                        neighbor_filters_prev = Filter.all_of([
+                            Filter.by_property("file_id").equal(original_file_id),
+                            Filter.by_property("chunk_index").equal(prev_chunk_idx_to_find)
+                        ])
+                        if course_id is not None: # Add course_id filter if specified for main query
+                            if neighbor_filters_prev.filters is None: # Should not happen with Filter.all_of
+                                neighbor_filters_prev.filters = []
+                            neighbor_filters_prev.filters.append(Filter.by_property("course_id").equal(course_id))
+                            
+                        neighbor_response_prev = chunks_collection.query.fetch_objects(
+                            filters=neighbor_filters_prev,
+                            limit=1
+                        )
+                        if neighbor_response_prev.objects:
+                            prev_neighbor = neighbor_response_prev.objects[0]
+                            if prev_neighbor.uuid not in all_relevant_chunks_map:
+                                all_relevant_chunks_map[prev_neighbor.uuid] = prev_neighbor
+                    
+                    # Next chunks
+                    next_chunk_idx_to_find = original_chunk_index + i
+                    neighbor_filters_next = Filter.all_of([
+                        Filter.by_property("file_id").equal(original_file_id),
+                        Filter.by_property("chunk_index").equal(next_chunk_idx_to_find)
+                    ])
+                    if course_id is not None: # Add course_id filter
+                        neighbor_filters_next.filters.append(Filter.by_property("course_id").equal(course_id))
+
+                    neighbor_response_next = chunks_collection.query.fetch_objects(
+                        filters=neighbor_filters_next,
+                        limit=1
+                    )
+                    if neighbor_response_next.objects:
+                        next_neighbor = neighbor_response_next.objects[0]
+                        if next_neighbor.uuid not in all_relevant_chunks_map:
+                             all_relevant_chunks_map[next_neighbor.uuid] = next_neighbor
+            except Exception as e_context:
+                print_warning(f"Error fetching context for chunk {matched_chunk.uuid}: {e_context}")
+
+
+        # Sort all collected chunks (primary + context) by file_id and then chunk_index
+        final_sorted_chunks = sorted(
+            list(all_relevant_chunks_map.values()),
+            key=lambda c: (c.properties.get('file_id', float('inf')), c.properties.get('chunk_index', float('inf')))
+        )
+        
+        print_status(f"Returning {len(final_sorted_chunks)} chunks (primary matches + context), sorted.")
+        return final_sorted_chunks
+
     except Exception as e:
-        print_warning(f"Error searching Weaviate: {e}")
+        print_warning(f"Error during search in Weaviate: {e}")
         return []
+    
+    
+def generate_prompt_for_llm(query_text: str, search_results: list, max_context_chunks: int = 5):
+    """
+    Generates a prompt string for a large language model (LLM) like Gemini,
+    including the user's query and context from search results.
+
+    Args:
+        query_text (str): The original user query.
+        search_results (list): A list of Weaviate result objects (chunks).
+        max_context_chunks (int): The maximum number of search result chunks to include in the context.
+
+    Returns:
+        str: The generated prompt string.
+    """
+    if not search_results:
+        prompt = f"""User Question: {query_text}
+
+        No relevant context was found in the documents for this question.
+        Please answer the user's question based on your general knowledge, or state if you cannot answer it without specific context.
+        """
+        print("--- Generated LLM Prompt (No Context) ---")
+        print(prompt)
+        print("----------------------------------------")
+        return prompt
+
+    context_str_parts = ["Context from relevant documents:"]
+    for i, res_obj in enumerate(search_results[:max_context_chunks]):
+        try:
+            chunk_text = res_obj.properties.get('chunk_text', 'N/A')
+            file_name = res_obj.properties.get('file_name', 'Unknown File')
+            chunk_index = res_obj.properties.get('chunk_index', 'N/A')
+            
+            context_str_parts.append("---")
+            context_str_parts.append(f"Source Document: {file_name}")
+            context_str_parts.append(f"Chunk Index: {chunk_index}")
+            context_str_parts.append("Content:")
+            context_str_parts.append(chunk_text)
+        except Exception as e:
+            print_warning(f"Error processing search result for prompt generation: {e}")
+            context_str_parts.append("---")
+            context_str_parts.append("[Error processing one of the context chunks]")
+
+    context_str = "\n".join(context_str_parts)
+
+    prompt = f"""User Question: {query_text}
+
+    {context_str}
+    ---
+
+    Instructions for the AI:
+    Based *only* on the context provided above from the documents, please do not answer the user question but rather provide what source document or 
+    documnets give you the answer and what the content is. Do not mention which chunk the answer is from. state the sections that best answer the question first.
+    If the context does not contain enough information to answer the question, clearly state that the information is not available in the provided documents.
+    Do not use any external knowledge or information outside of the provided document excerpts.
+    Be concise and directly address what context can answer the user's question.
+    """
+
+    print("\n--- Generated LLM Prompt ---")
+    print(prompt)
+    print("----------------------------\n")
+    return prompt

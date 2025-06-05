@@ -14,6 +14,7 @@ class WeaviateManager:
         self.client = None
         self.service_started_by_manager = False
 
+
     def _run_docker_compose(self, args: list) -> bool:
         try:
             # Ensure docker-compose is run from the directory containing the yml file
@@ -44,6 +45,7 @@ class WeaviateManager:
             print_manager_error(f"Exception running docker-compose {' '.join(args)}: {e}")
             return False
 
+
     def start_service(self, retries=3, delay=10) -> bool:
         """Starts the Weaviate Docker service if not already running."""
         print_manager_status("Attempting to start Weaviate service via docker-compose...")
@@ -70,6 +72,7 @@ class WeaviateManager:
             return False
         return False
 
+
     def stop_service(self) -> bool:
         """Stops the Weaviate Docker service if it was started by this manager."""
         if self.service_started_by_manager:
@@ -82,6 +85,7 @@ class WeaviateManager:
             print_manager_status("Weaviate service was not started by this manager or already stopped, skip docker-compose down.")
             return True 
 
+
     def connect_client(self) -> bool:
         if self.client and self.client.is_ready():
             print_manager_status("Already connected to Weaviate.")
@@ -93,6 +97,7 @@ class WeaviateManager:
         print_manager_error("Failed to connect Weaviate client.")
         return False
 
+
     def ensure_schema(self) -> bool:
         if not self.client:
             print_manager_warning("Cannot ensure schema: Weaviate client not connected.")
@@ -103,6 +108,7 @@ class WeaviateManager:
         except Exception as e:
             print_manager_error(f"Error creating/verifying Weaviate schema: {e}")
             return False
+
 
     def ingest_all_courses_metadata(self, class_list_json_path: str) -> bool:
         if not self.client:
@@ -118,6 +124,7 @@ class WeaviateManager:
         else:
             print_manager_warning("No course data prepared for ingestion.")
             return False
+
 
     def ingest_course_files_and_chunks(self, course_id: int) -> bool:
         if not self.client:
@@ -141,11 +148,25 @@ class WeaviateManager:
             print_manager_warning(f"No file data prepared for ingestion for course {course_id}.")
             return False
             
-    def search_chunks(self, query_text: str, course_id: int = None, limit: int = 5) -> list:
+            
+    def search_chunks(self, query_text: str, course_id: int = None, limit: int = 10, alpha_hybrid: float = 0.5, context_window: int = 1): # Add context_window here
+        """
+        Performs a search for chunks in Weaviate.
+        """
         if not self.client:
-            print_manager_warning("Cannot search: Weaviate client not connected.")
+            print_manager_warning("Weaviate client not available for search.")
             return []
-        return wu.search_weaviate(self.client, query_text, course_id=course_id, limit=limit)
+        
+        # Pass context_window to the underlying weaviate_utils function
+        return wu.search_weaviate(
+            self.client, 
+            query_text, 
+            course_id=course_id, 
+            limit=limit, 
+            alpha_hybrid=alpha_hybrid, 
+            context_window=context_window 
+        )
+
 
     def close_connection(self):
         if self.client:

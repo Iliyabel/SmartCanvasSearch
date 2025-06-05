@@ -658,17 +658,36 @@ class MainWindow(QMainWindow):
             # Perform search in a thread
             def search_task():
                 self.weaviate_status_update.emit(f"Searching for: '{user_text}'...")
-                results = self.weaviate_manager.search_chunks(user_text, course_id=course_id)
+                
+                search_limit = 5 # Number of primary results
+                search_context_window = 1 # Neighbors for each primary result
+                
+                results = self.weaviate_manager.search_chunks(
+                    user_text, 
+                    course_id=course_id, 
+                    limit=search_limit, 
+                    context_window=search_context_window
+                ) 
+
+                # Generate and print the prompt for manual testing
+                if results: # Or even if not, the function handles it
+                    from utils.weaviate_utils import generate_prompt_for_llm # Ensure import
+                    llm_max_chunks = search_limit * (1 + 2 * search_context_window) 
+                    generated_prompt = generate_prompt_for_llm(user_text, results, max_context_chunks=llm_max_chunks)
+
+
                 if results:
-                    # Construct a more detailed response if needed
-                    bot_response_parts = [f"Found {len(results)} relevant chunks for '{user_text}':"]
-                    for i, res_obj in enumerate(results[:3]): # Show top 3 results for example
+                    display_limit_in_chat = 3 
+                    bot_response_parts = [f"Found {len(results)} relevant chunks for '{user_text}': (Prompt for LLM also printed to console)"]                    
+                    
+                    for i, res_obj in enumerate(results[:display_limit_in_chat]): 
                         chunk_text = res_obj.properties.get('chunk_text', 'N/A')
                         file_name = res_obj.properties.get('file_name', 'Unknown File')
-                        bot_response_parts.append(f"\n{i+1}. From '{file_name}':\n   \"{chunk_text[:150]}...\"")
+                        chunk_idx_display = res_obj.properties.get('chunk_index', 'N/A')
+                        # Indicate if it was a primary match or context (more advanced, requires tracking in search_weaviate)
+                        bot_response_parts.append(f"\n{i+1}. From '{file_name}' (Chunk {chunk_idx_display}):\n   \"{chunk_text[:150]}...\"")
                     bot_response = "\n".join(bot_response_parts)
                     self.weaviate_status_update.emit(bot_response)
-
                 else:
                     self.weaviate_status_update.emit(f"No results found for '{user_text}'.")
 
