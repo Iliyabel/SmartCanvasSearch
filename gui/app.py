@@ -377,13 +377,11 @@ class ChatScreenWidget(QWidget):
         self.user_input.setObjectName("user_input")
         self.user_input.setPlaceholderText("Enter a question...")
         self.user_input.setFont(QFont("Arial", 10))
-        self.user_input.returnPressed.connect(self.handle_user_message)
         self.bottom_input_layout.addWidget(self.user_input, 1)
 
         self.run_button = QPushButton("Run")
         self.run_button.setObjectName("run_button")
         self.run_button.setGraphicsEffect(shadow3)
-        self.run_button.clicked.connect(self.handle_user_message)
         self.bottom_input_layout.addWidget(self.run_button)
         
         self.run_button.clicked.connect(lambda: self.parent().parent().handle_user_message())
@@ -422,15 +420,6 @@ class ChatScreenWidget(QWidget):
         QTimer.singleShot(0, lambda: self.scroll_area.verticalScrollBar().setValue(
             self.scroll_area.verticalScrollBar().maximum()
         ))
-
-    def handle_user_message(self):
-        user_text = self.user_input.text().strip()
-        if user_text:
-            self.add_message_to_chat("You", user_text, True)
-            self.user_input.clear()
-            # Placeholder for bot response logic
-            QTimer.singleShot(500, lambda: self.add_bot_message(f"Thinking about: '{user_text[:30]}...'"))
-
 
     def add_bot_message(self, message):
         self.add_message_to_chat("Bot", message, False)
@@ -658,20 +647,26 @@ class MainWindow(QMainWindow):
         self.show_chat_screen()
     
     def handle_user_message(self): 
-        user_text = self.chat_screen.user_input.text().strip() # CORRECTED
+        user_text = self.chat_screen.user_input.text().strip()
         if user_text and self.selected_course_data:
             course_id = self.selected_course_data.get("id")
             
-            # Add user's message to chat UI immediately
-            self.chat_screen.add_message_to_chat("You", user_text, True) # MOVED UP
-            self.chat_screen.user_input.clear() # Clear input field immediately
+            # Add user's message to chat UI 
+            self.chat_screen.add_message_to_chat("You", user_text, True)
+            self.chat_screen.user_input.clear() # Clear input field 
             
             # Perform search in a thread
             def search_task():
                 self.weaviate_status_update.emit(f"Searching for: '{user_text}'...")
                 results = self.weaviate_manager.search_chunks(user_text, course_id=course_id)
                 if results:
-                    bot_response = f"Found {len(results)} relevant chunks for '{user_text}'. Top result: {results[0].properties.get('chunk_text', '')[:100]}..."
+                    # Construct a more detailed response if needed
+                    bot_response_parts = [f"Found {len(results)} relevant chunks for '{user_text}':"]
+                    for i, res_obj in enumerate(results[:3]): # Show top 3 results for example
+                        chunk_text = res_obj.properties.get('chunk_text', 'N/A')
+                        file_name = res_obj.properties.get('file_name', 'Unknown File')
+                        bot_response_parts.append(f"\n{i+1}. From '{file_name}':\n   \"{chunk_text[:150]}...\"")
+                    bot_response = "\n".join(bot_response_parts)
                     self.weaviate_status_update.emit(bot_response)
 
                 else:
@@ -680,7 +675,4 @@ class MainWindow(QMainWindow):
 
             search_thread = threading.Thread(target=search_task, daemon=True)
             search_thread.start()
-            
-            self.chat_screen.user_input.clear()
-            self.chat_screen.add_message_to_chat("You", user_text, True)
 
