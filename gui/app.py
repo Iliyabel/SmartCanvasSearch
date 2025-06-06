@@ -1,14 +1,15 @@
-import sys
 import os
 from utils import general_utils as gu
-from utils.weaviate_manager import WeaviateManager # Import the new manager
+from utils.weaviate_manager import WeaviateManager
+from utils.ai_utils import get_gemini_response, get_dummy_ai_response, format_ai_response
+from utils.weaviate_utils import generate_prompt_for_llm
 import threading 
 from dotenv import load_dotenv
 
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QScrollArea, QSizePolicy, 
-    QGraphicsDropShadowEffect, QStackedWidget, QGridLayout
+    QGraphicsDropShadowEffect, QStackedWidget, QGridLayout, QStatusBar
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QFont, QIcon
@@ -316,6 +317,7 @@ class ChatMessageWidget(QWidget):
             self.icon_label.setPixmap(QIcon("resources/icon.png").pixmap(50, 50))
             
             self.message_label.setObjectName("bot_message")
+            self.message_label.setTextFormat(Qt.TextFormat.RichText)
             self.layout.addWidget(self.icon_label, alignment=Qt.AlignmentFlag.AlignLeft)
             self.layout.addWidget(self.message_label, alignment=Qt.AlignmentFlag.AlignLeft)
 
@@ -429,6 +431,9 @@ class MainWindow(QMainWindow):
     # Signal for Weaviate status updates to show in GUI
     weaviate_status_update = pyqtSignal(str)
     
+    # Signal for chat messages from threads
+    chat_message_ready = pyqtSignal(str, str, bool) # sender_name, message_text, is_user
+    
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Course Compass")
@@ -441,15 +446,19 @@ class MainWindow(QMainWindow):
             print(f"Warning: Main window icon not found at {icon_path}")
             
         self.canvas_token = None # To store the token
+        self.gemini_api_key = None # To store the Gemini API key
         self.selected_course_data = None 
         self.base_url = None # Store base_url
 
         self.stacked_widget = QStackedWidget()
         self.setCentralWidget(self.stacked_widget)
+        
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
 
         self.welcome_screen = WelcomeScreen()
-        self.course_selection_screen = CourseSelectionScreen()
-        self.chat_screen = ChatScreenWidget()
+        self.course_selection_screen = CourseSelectionScreen(self)
+        self.chat_screen = ChatScreenWidget(self)
 
         self.stacked_widget.addWidget(self.welcome_screen)           # Index 0
         self.stacked_widget.addWidget(self.course_selection_screen) # Index 1
@@ -462,7 +471,8 @@ class MainWindow(QMainWindow):
         self.weaviate_manager = WeaviateManager(project_root=PROJECT_ROOT_GUI)
         self.weaviate_initialized_for_session = False # Flag to init only once per session
         
-        self.weaviate_status_update.connect(self.chat_screen.add_bot_message)
+        self.weaviate_status_update.connect(self.update_status_bar)
+        self.chat_message_ready.connect(self._add_message_to_chat_slot)
         
         self._load_env_vars() # Load .env once
         self.check_existing_token_and_load() # Check for canvas token at startup
@@ -477,6 +487,10 @@ class MainWindow(QMainWindow):
                 print(f"Loaded BASE_URL from .env: {self.base_url}")
             else:
                 print("Warning: BASE_URL not found in .env file.")
+                
+            self.gemini_api_key = os.getenv("GEMINI_API_KEY")
+            if not self.gemini_api_key:
+                print("[WARNING] GEMINI_API_KEY not found in .env file. AI responses will not be available.")
         else:
             print(f"Warning: .env file not found at {dotenv_path}.")
             
@@ -497,7 +511,7 @@ class MainWindow(QMainWindow):
                     self.weaviate_status_update.emit("Failed to reconnect Weaviate client.")
                     return False
                 self.weaviate_status_update.emit("Reconnected to Weaviate.")
-            return True # Already initialized and client seems okay or reconnected
+            return True 
 
         self.weaviate_status_update.emit("Starting Weaviate service...")
         if not self.weaviate_manager.start_service():
@@ -529,7 +543,6 @@ class MainWindow(QMainWindow):
         return True
 
     def _run_weaviate_init_threaded(self):
-        # Disable relevant GUI elements during this process
         thread = threading.Thread(target=self._initialize_weaviate_if_needed, daemon=True)
         thread.start()
 
@@ -669,29 +682,47 @@ class MainWindow(QMainWindow):
                     context_window=search_context_window
                 ) 
 
-                # Generate and print the prompt for manual testing
-                if results: # Or even if not, the function handles it
-                    from utils.weaviate_utils import generate_prompt_for_llm # Ensure import
-                    llm_max_chunks = search_limit * (1 + 2 * search_context_window) 
-                    generated_prompt = generate_prompt_for_llm(user_text, results, max_context_chunks=llm_max_chunks)
+                llm_max_chunks = search_limit * (1 + 2 * search_context_window) 
+                generated_prompt = generate_prompt_for_llm(user_text, results if results else [], max_context_chunks=llm_max_chunks)
 
+                # Check if gemini_api_key is set
+                if not self.gemini_api_key:
+                    self.weaviate_status_update.emit("AI response unavailable (API key missing). Prompt printed to console.")
+                    return 
+                
+                if not generated_prompt:
+                    self.weaviate_status_update.emit("Failed to generate prompt for AI.")
+                    return
+                
+                self.weaviate_status_update.emit("Getting AI response...")
 
-                if results:
-                    display_limit_in_chat = 3 
-                    bot_response_parts = [f"Found {len(results)} relevant chunks for '{user_text}': (Prompt for LLM also printed to console)"]                    
+                try:
+                    # ai_response_text = get_gemini_response(generated_prompt, self.gemini_api_key, model_name="gemini-1.5-flash-latest")
+                    ai_response_text = get_dummy_ai_response() # For testing without real API
+                    ai_response_text = format_ai_response(ai_response_text)
                     
-                    for i, res_obj in enumerate(results[:display_limit_in_chat]): 
-                        chunk_text = res_obj.properties.get('chunk_text', 'N/A')
-                        file_name = res_obj.properties.get('file_name', 'Unknown File')
-                        chunk_idx_display = res_obj.properties.get('chunk_index', 'N/A')
-                        # Indicate if it was a primary match or context (more advanced, requires tracking in search_weaviate)
-                        bot_response_parts.append(f"\n{i+1}. From '{file_name}' (Chunk {chunk_idx_display}):\n   \"{chunk_text[:150]}...\"")
-                    bot_response = "\n".join(bot_response_parts)
-                    self.weaviate_status_update.emit(bot_response)
-                else:
-                    self.weaviate_status_update.emit(f"No results found for '{user_text}'.")
+                    # Display AI response in chat
+                    self.chat_message_ready.emit("Gemini AI", ai_response_text, False)
+                    self.weaviate_status_update.emit("AI response received.")
+                    
+                except Exception as e:
+                    # This is a fallback, get_gemini_response should return error strings
+                    error_msg = f"Error processing AI response: {e}"
+                    print(f"[GUI_ERROR] {error_msg}") # Or your app's error printing
+                    self.chat_message_ready.emit("System Error", error_msg, False)
+                    self.weaviate_status_update.emit("Error getting AI response.")
 
 
             search_thread = threading.Thread(target=search_task, daemon=True)
             search_thread.start()
-
+            
+    def _add_message_to_chat_slot(self, sender_name: str, message_text: str, is_user: bool):
+        """This slot runs in the main GUI thread and safely updates the chat."""
+        if self.chat_screen: # Ensure chat_screen exists
+            self.chat_screen.add_message_to_chat(sender_name, message_text, is_user)
+            
+    def update_status_bar(self, message: str):
+        """Updates the QStatusBar with the given message."""
+        if self.status_bar:
+            self.status_bar.showMessage(message, 5000) # Show message for 5 seconds (5000 ms)
+            print(f"[STATUS_BAR] {message}")

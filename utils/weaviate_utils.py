@@ -667,11 +667,11 @@ def generate_prompt_for_llm(query_text: str, search_results: list, max_context_c
     ---
 
     Instructions for the AI:
-    Based *only* on the context provided above from the documents, please do not answer the user question but rather provide what source document or 
-    documnets and then the page or slide number that give you the answer and what the content is. Do not mention which chunk the answer is from. state the sections that best answer the question first.
+    Based *only* on the context provided above from the documents, please answer the user's question: "{query_text}"
     If the context does not contain enough information to answer the question, clearly state that the information is not available in the provided documents.
     Do not use any external knowledge or information outside of the provided document excerpts.
-    Be concise and directly address what context can answer the user's question.
+    When possible, cite the source document and location (e.g., page or slide number) for the information you use, like [Source: filename.pdf (Page X)].
+    Be concise and helpful.
     """
 
     print("\n--- Generated LLM Prompt ---")
