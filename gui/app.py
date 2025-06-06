@@ -697,8 +697,9 @@ class MainWindow(QMainWindow):
                 self.weaviate_status_update.emit("Getting AI response...")
 
                 try:
-                    # ai_response_text = get_gemini_response(generated_prompt, self.gemini_api_key, model_name="gemini-1.5-flash-latest")
-                    ai_response_text = get_dummy_ai_response() # For testing without real API
+                    # ai_response_text = get_gemini_response(generated_prompt, self.gemini_api_key, model_name="gemini-2.0-flash-lite")
+                    ai_response_text = get_dummy_ai_response()
+                    print(f"[AI_RESPONSE] {ai_response_text}") # Print AI response to console for debugging
                     ai_response_text = format_ai_response(ai_response_text)
                     
                     # Display AI response in chat
@@ -706,7 +707,7 @@ class MainWindow(QMainWindow):
                     self.weaviate_status_update.emit("AI response received.")
                     
                 except Exception as e:
-                    # This is a fallback, get_gemini_response should return error strings
+                    # Fallback, get_gemini_response should return error strings
                     error_msg = f"Error processing AI response: {e}"
                     print(f"[GUI_ERROR] {error_msg}") # Or your app's error printing
                     self.chat_message_ready.emit("System Error", error_msg, False)
@@ -724,5 +725,5 @@ class MainWindow(QMainWindow):
     def update_status_bar(self, message: str):
         """Updates the QStatusBar with the given message."""
         if self.status_bar:
-            self.status_bar.showMessage(message, 5000) # Show message for 5 seconds (5000 ms)
+            self.status_bar.showMessage(message, 7000) # Show message for 7 seconds 
             print(f"[STATUS_BAR] {message}")
