@@ -697,8 +697,8 @@ class MainWindow(QMainWindow):
                 self.weaviate_status_update.emit("Getting AI response...")
 
                 try:
-                    # ai_response_text = get_gemini_response(generated_prompt, self.gemini_api_key, model_name="gemini-2.0-flash-lite")
-                    ai_response_text = get_dummy_ai_response()
+                    ai_response_text = get_gemini_response(generated_prompt, self.gemini_api_key, model_name="gemini-2.0-flash-lite")
+                    # ai_response_text = get_dummy_ai_response()
                     print(f"[AI_RESPONSE] {ai_response_text}") # Print AI response to console for debugging
                     ai_response_text = format_ai_response(ai_response_text)
                     

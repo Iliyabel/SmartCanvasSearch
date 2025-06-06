@@ -64,36 +64,6 @@ def get_gemini_response(prompt: str, api_key: str, model_name: str = "gemini-2.0
         return f"Error communicating with Gemini API: {str(e)}"
     
     
-def get_dummy_ai_response() -> str:
-    """
-    Returns a dummy AI response for testing purposes.
-        
-    Returns:
-        str: A dummy response simulating an AI's answer.
-    """
-    return """The files that mention SysTick interrupts are:
-
-    -- Final_Project.docx [Source: Final_Project.docx (Paragraph 176)]
-    (Summary)   This final project only handles SysTick interrupts. The SysTick timer is started with _timer_start which is invoked when main() calls alarm(). The SysTick timer can count down up to 1 second. If main() calls alarm(2) or alarm(3), SysTick interrupts will occur at least twice or three times. Upon receiving a SysTick interrupt, the control jumps to SysTick_Handler in startup_TM4C129.s.
-    *   "Interrupts: This final project only handles SysTick interrupts."
-    *   "The SysTick timer gets started with _timer_start that was invoked when main( ) calls alarm( )."
-    *   "Note that SysTick timer can count down up to 1 second."
-    *   "Therefore, if main( ) calls alarm( 2 ) or alarm( 3 ), you’ll get a SysTick interrupts at least twice or three times."
-    *   "Upon receiving a SysTick interrupt, the control jumps to SysTick_Handler in startup_TM4C129.s."
-
-    -- Final_Project.docx [Source: Final_Project.docx (Paragraph 267)]
-    (Summary)   This document mentions SysTick Interrupt.
-    *   "SysTick Interrupt"
-
-    -- Final_Project.docx [Source: Final_Project.docx (Paragraph 268)]
-    (Summary)   A SysTick interrupt is caught at SysTick_Handler in startup_TM4C129.s.
-    *   "A SysTick interrupt is caught at SysTick_Handler in startup_TM4C129.s."
-
-    -- Homework7_key.docx [Source: Homework7_key.docx (Paragraph 74)]
-    (Summary)   The C program defines sig_handler() that is invoked upon receiving a SysTick interrupt. The main() function initializes alarmed to 1, schedules sig_hanlder() to be invoked upon a SysTick interrupt, and starts SysTick to count down for 10 seconds.
-    *   "The following C program defines sig_handler( ) (lines 2-4) that is invoked upon receiving a SysTick interrupt and that changes alarmed from 1 to 2. The main( ) function (lines 6-16) initializes alarmed to 1 (line 8), schedules sig_hanlder( ) to be invoked upon a SysTick interrupt (line 9), and starts SysTick to count down for 10 seconds (line 10). The main( ) function falls into a while( ) loop (lines 11-14), jumps sig_handler( ) upon receiving a SysTick interrupt, and gets out of the while( ) loop as alarmed eventually becomes 2."""    
-    
-    
 def format_ai_response(response: str) -> str:
     """
     Converts a plain-text AI response into a more styled HTML
