@@ -122,9 +122,11 @@ def create_schema(client):
             name="Chunk",
             properties=[
                 Property(name="chunk_text", data_type=DataType.TEXT),
-                Property(name="chunk_index", data_type=DataType.INT, skip_vectorization=True),
+                Property(name="chunk_index", data_type=DataType.INT, skip_vectorization=True), # Overall index within the file
                 Property(name="file_id", data_type=DataType.INT, skip_vectorization=True),
                 Property(name="course_id", data_type=DataType.INT, skip_vectorization=True),
+                Property(name="file_name", data_type=DataType.TEXT, skip_vectorization=True),
+                Property(name="source_location", data_type=DataType.TEXT, skip_vectorization=True),
             ],
             description="A chunk of text from a file used for vector search",
             vectorizer_config=wvcc.Configure.Vectorizer.none(),
@@ -369,47 +371,62 @@ def insert_files_into_weaviate(client, files_prepared_data: list, course_id: int
                     continue
                 
                 print_status(f"Processing file for chunking: {file_props['local_file_path']}")
+                
                 # Extract text and create chunks
-                text = ""
+                text_segments_with_locations: list[tuple[str, str]] = []
                 try:
                     if file_extension == 'pdf':
-                        text = extractTextFromPdf(file_props["local_file_path"])
+                        text_segments_with_locations = extractTextFromPdf(file_props["local_file_path"])
                     elif file_extension == 'pptx':
-                        text = extractTextFromPPTX(file_props["local_file_path"])
+                        text_segments_with_locations = extractTextFromPPTX(file_props["local_file_path"])
                     elif file_extension == 'docx':
-                        text = extractTextFromDocx(file_props["local_file_path"])
+                        text_segments_with_locations = extractTextFromDocx(file_props["local_file_path"])
                     elif file_extension == 'txt':
-                        text = extractTextFromTxt(file_props["local_file_path"])
+                        text_segments_with_locations = extractTextFromTxt(file_props["local_file_path"])
                 except Exception as e:
-                    print_warning(f"Failed to extract text from {file_props['local_file_path']}: {e}")
+                    print_warning(f"Failed to extract text segments from {file_props['local_file_path']}: {e}")
                     continue
 
-                if not text.strip():
-                    print_status(f"No text extracted from {file_props['filename']}. Skipping chunk insertion.")
-                    continue
-
-                chunks_text = semantic_chunking(text)
-                if not chunks_text:
-                    print_status(f"No chunks created from {file_props['filename']}. Skipping chunk insertion.")
+                if not text_segments_with_locations:
+                    print_status(f"No text segments extracted from {file_props['filename']}. Skipping chunk insertion.")
                     continue
                 
-                prepared_chunks_props = prepare_chunks_for_weaviate(chunks_text) # List of dicts with chunk_text, chunk_index
+                current_file_chunk_idx = 0 
+                for text_segment, location_str in text_segments_with_locations:
+                    if not text_segment.strip():
+                        continue
 
-                for chunk_data in prepared_chunks_props:
-                    chunk_vector = encode_text(chunk_data["chunk_text"])
+                    # Chunk the current text_segment
+                    segment_chunks_text = semantic_chunking(text_segment) 
                     
-                    chunk_full_props = {
-                        "chunk_text": chunk_data["chunk_text"],
-                        "chunk_index": chunk_data["chunk_index"],
-                        "file_id": file_props["file_id"], # Canvas file_id
-                        "course_id": course_id,           # Canvas course_id
-                        "file_name": file_props["filename"]
-                    }
-                    # Weaviate UUID for the chunk
-                    chunk_uuid = generate_uuid5(f'{file_props["file_id"]}_{chunk_data["chunk_index"]}', "Chunk")
-                    all_chunks_to_insert_with_vectors.append(
-                        {"properties": chunk_full_props, "vector": chunk_vector.tolist(), "uuid": chunk_uuid} # Ensure vector is list
-                    )
+                    if not segment_chunks_text:
+                        continue
+                    
+                    for chunk_text_from_segment in segment_chunks_text:
+                        if not chunk_text_from_segment.strip(): # Ensure chunk itself is not empty
+                            continue
+                        chunk_vector = encode_text(chunk_text_from_segment)
+                        if chunk_vector is None:
+                            print_warning(f"Could not encode chunk from {file_props['filename']} ({location_str}). Skipping.")
+                            continue
+                        
+                        chunk_full_props = {
+                            "chunk_text": chunk_text_from_segment,
+                            "chunk_index": current_file_chunk_idx, # Overall index within the file
+                            "file_id": canvas_file_id, 
+                            "course_id": course_id,
+                            "file_name": file_props["filename"],
+                            "source_location": location_str # Store the page/slide/para info
+                        }
+                        
+                        # Weaviate UUID for the chunk, ensuring uniqueness within the file
+                        chunk_uuid = generate_uuid5(f'{canvas_file_id}_{current_file_chunk_idx}', "Chunk")
+                        all_chunks_to_insert_with_vectors.append(
+                            {"properties": chunk_full_props, "vector": chunk_vector.tolist(), "uuid": chunk_uuid}
+                        )
+                        current_file_chunk_idx += 1
+            else:
+                 print_status(f"File type '{file_extension}' for '{file_props['filename']}' is not supported for text chunking. Only metadata inserted/updated.")
                     
     if len(files_collection.batch.failed_objects) > 0:
         print_warning(f"Failed to import {len(files_collection.batch.failed_objects)} file objects for course {course_id}.")
@@ -631,11 +648,10 @@ def generate_prompt_for_llm(query_text: str, search_results: list, max_context_c
         try:
             chunk_text = res_obj.properties.get('chunk_text', 'N/A')
             file_name = res_obj.properties.get('file_name', 'Unknown File')
-            chunk_index = res_obj.properties.get('chunk_index', 'N/A')
+            source_loc = res_obj.properties.get('source_location', 'Location N/A') 
             
             context_str_parts.append("---")
-            context_str_parts.append(f"Source Document: {file_name}")
-            context_str_parts.append(f"Chunk Index: {chunk_index}")
+            context_str_parts.append(f"Source Document: {file_name} ({source_loc})") 
             context_str_parts.append("Content:")
             context_str_parts.append(chunk_text)
         except Exception as e:
@@ -652,7 +668,7 @@ def generate_prompt_for_llm(query_text: str, search_results: list, max_context_c
 
     Instructions for the AI:
     Based *only* on the context provided above from the documents, please do not answer the user question but rather provide what source document or 
-    documnets give you the answer and what the content is. Do not mention which chunk the answer is from. state the sections that best answer the question first.
+    documnets and then the page or slide number that give you the answer and what the content is. Do not mention which chunk the answer is from. state the sections that best answer the question first.
     If the context does not contain enough information to answer the question, clearly state that the information is not available in the provided documents.
     Do not use any external knowledge or information outside of the provided document excerpts.
     Be concise and directly address what context can answer the user's question.

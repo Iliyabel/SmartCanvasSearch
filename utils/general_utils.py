@@ -266,92 +266,84 @@ def getCourseTXTMaterial(classId: int, headers: dict) -> str:
 
 
 # Function to pull text given a powerpoint path
-def extractTextFromPPTX(pptx_path: str) -> str:
-    """
-    Extract text from a PowerPoint file.
-
-    Args:
-        pptx_path (str): The path to the PowerPoint file.
-
-    Returns:
-        str: The extracted text from the PowerPoint file.
-
-    This function uses the python-pptx library to read the PowerPoint file and extract text from each slide.
-    It iterates through each slide and each shape within the slide, checking if the shape has text.
-    If it does, it appends the text to a string and returns the complete text.
-    The function returns the extracted text as a single string, with each slide's text separated by a newline character.
-    """
+def extractTextFromPPTX(filePath: str) -> list[tuple[str, str]]:
+    """Extracts text from each slide of a PPTX file."""
+    
     from pptx import Presentation
     
-    prs = Presentation(pptx_path)
-    text = ""
-    for slide in prs.slides:
-        for shape in slide.shapes:
-            if hasattr(shape, "text"):
-                text += shape.text + "\n"
-    return text
+    text_with_locations = []
+    try:
+        prs = Presentation(filePath)
+        for i, slide in enumerate(prs.slides):
+            slide_text = ""
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    slide_text += shape.text + "\n"
+            if slide_text.strip(): 
+                text_with_locations.append((slide_text.strip(), f"Slide {i + 1}"))
+        if not text_with_locations:
+            print(f"[GENERAL_UTILS_WARNING] No text extracted from PPTX: {filePath}")
+    except Exception as e:
+        print(f"[GENERAL_UTILS_ERROR] Failed to extract text from PPTX {filePath}: {e}")
+    return text_with_locations
 
 
 # Function to extract text given a pdf path
-def extractTextFromPdf(pdf_path: str) -> str:
-    """
-    Extract text from a PDF file.
-
-    Args:
-        pdf_path (str): The path to the PDF file.
-
-    Returns:
-        str: The extracted text from the PDF file.
-
-    This function uses the pdfminer library to read the PDF file and extract text from it.
-    It uses the extract_text function to read the entire PDF and return the text as a string.
-    The function returns the extracted text as a single string, with leading and trailing whitespace removed.
-    The function also handles any exceptions that may occur during the extraction process.
-    """
-    from pdfminer.high_level import extract_text
+def extractTextFromPdf(filePath: str) -> list[tuple[str, str]]:
+    """Extracts text from each page of a PDF file."""
     
-    text = extract_text(pdf_path)
-    return text.strip()
+    from pdfminer.high_level import extract_pages
+    from pdfminer.layout import LTTextContainer
+    
+    text_with_locations = []
+    try:
+        for i, page_layout in enumerate(extract_pages(filePath)):
+            page_text = ""
+            for element in page_layout:
+                if isinstance(element, LTTextContainer):
+                    page_text += element.get_text()
+            if page_text.strip():
+                text_with_locations.append((page_text.strip(), f"Page {i + 1}"))
+        if not text_with_locations:
+             print(f"[GENERAL_UTILS_WARNING] No text extracted from PDF: {filePath}")
+    except Exception as e:
+        print(f"[GENERAL_UTILS_ERROR] Failed to extract text from PDF {filePath}: {e}")
+    return text_with_locations
 
 
 # Function to extract text given a docx path
-def extractTextFromDocx(docx_path : str) -> str:
-    """
-    Extract text from a DOCX file.
-
-    Args:
-        docx_path (str): The path to the DOCX file.
-
-    Returns:
-        str: The extracted text from the DOCX file.
-
-    This function uses the python-docx library to read the DOCX file and extract text from it.
-    It iterates through each paragraph in the document and appends the text to a string.
-    The function returns the extracted text as a single string, with each paragraph's text separated by a newline character.
-    """
+def extractTextFromDocx(filePath: str) -> list[tuple[str, str]]:
+    """Extracts text from each paragraph of a DOCX file."""
     from docx import Document
-    doc = Document(docx_path)
-    text = "\n".join([para.text for para in doc.paragraphs])
-    return text
+    
+    text_with_locations = []
+    try:
+        doc = Document(filePath)
+        
+        for i, para in enumerate(doc.paragraphs):
+            if para.text.strip():
+                text_with_locations.append((para.text.strip(), f"Paragraph {i + 1}"))
+        if not text_with_locations:
+            print(f"[GENERAL_UTILS_WARNING] No text extracted from DOCX: {filePath}")
+    except Exception as e:
+        print(f"[GENERAL_UTILS_ERROR] Failed to extract text from DOCX {filePath}: {e}")
+    return text_with_locations
 
 
 # Function to extract text given a txt path
-def extractTextFromTxt(txt_path: str) -> str:
-    """
-    Extract text from a TXT file.
-    
-    Args:
-        txt_path (str): The path to the TXT file.
-
-    Returns:
-        str: The extracted text from the TXT file.
-
-    This function uses the built-in open function to read the TXT file and extract text from it.
-    It opens the file in read mode with UTF-8 encoding and reads the entire content.
-    The function returns the extracted text as a single string.
-    """
-    with open(txt_path, "r", encoding="utf-8") as file:
-        return file.read()
+def extractTextFromTxt(filePath: str) -> list[tuple[str, str]]:
+    """Extracts text from a TXT file."""
+    text_with_locations = []
+    try:
+        with open(filePath, 'r', encoding='utf-8') as f:
+            content = f.read()
+        if content.strip():
+            text_with_locations.append((content.strip(), "File Content"))
+        else:
+            print(f"[GENERAL_UTILS_WARNING] No text extracted from TXT: {filePath}")
+    except Exception as e:
+        print(f"[GENERAL_UTILS_ERROR] Failed to extract text from TXT {filePath}: {e}")
+    return text_with_locations
 
 
 # Function to encode text using SentenceTransformer
