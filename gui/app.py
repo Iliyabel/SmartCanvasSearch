@@ -1,7 +1,7 @@
 import os
 from utils import general_utils as gu
 from utils.weaviate_manager import WeaviateManager
-from utils.ai_utils import get_gemini_response, get_dummy_ai_response, format_ai_response
+from utils.ai_utils import get_gemini_response, format_ai_response
 from utils.weaviate_utils import generate_prompt_for_llm
 import threading 
 from dotenv import load_dotenv
@@ -430,6 +430,7 @@ class ChatScreenWidget(QWidget):
 class MainWindow(QMainWindow): 
     # Signal for Weaviate status updates to show in GUI
     weaviate_status_update = pyqtSignal(str)
+    course_processing_finished_signal = pyqtSignal(dict)
     
     # Signal for chat messages from threads
     chat_message_ready = pyqtSignal(str, str, bool) # sender_name, message_text, is_user
@@ -473,6 +474,7 @@ class MainWindow(QMainWindow):
         
         self.weaviate_status_update.connect(self.update_status_bar)
         self.chat_message_ready.connect(self._add_message_to_chat_slot)
+        self.course_processing_finished_signal.connect(self._on_course_processing_finished)
         
         self._load_env_vars() # Load .env once
         self.check_existing_token_and_load() # Check for canvas token at startup
@@ -605,6 +607,9 @@ class MainWindow(QMainWindow):
         self.stacked_widget.setCurrentIndex(0)
 
     def show_course_selection_screen(self):
+        # Start Weaviate in a background thread
+        threading.Thread(target=self._initialize_weaviate_if_needed, daemon=True).start()
+    
         self.stacked_widget.setCurrentIndex(1)
             
     def show_chat_screen(self):
@@ -617,47 +622,26 @@ class MainWindow(QMainWindow):
         self.show_course_selection_screen()
 
     def handle_course_selection(self, course_data: dict):
-        self.selected_course_data = course_data
+        self.selected_course_data = course_data # Store selected course data immediately
         course_name = course_data.get("name", "Unknown Course")
         course_id = course_data.get("id")
 
-        print(f"Selected course: {course_name} (ID: {course_id})")
-
-        if course_id is None:
-            print("Error: Course ID is missing. Cannot fetch materials.")
-            return
+        print(f"Course selection initiated for: {course_name} (ID: {course_id})")
+        self.weaviate_status_update.emit(f"Processing course: {course_name}...") # Initial status
 
         if not self.canvas_token or not self.base_url:
-            print("Error: Canvas token or BASE_URL is not available. Cannot fetch materials.")
-            self.show_welcome_screen()
+            print("Error: Canvas token or BASE_URL is not available. Cannot process course.")
+            self.weaviate_status_update.emit("Error: Configuration missing. Please check token/URL.")
+            self.show_welcome_screen() # Or some other appropriate action
             return
-
-        headers = {"Authorization": f"Bearer {self.canvas_token}"}
-
-        # --- Perform file operations ---
-        self.weaviate_status_update.emit(f"Downloading files for course ID: {course_id}...") # GUI feedback
-        print(f"Fetching file list for course ID: {course_id}...")
-        list_result = gu.listCourseMaterial(course_id, self.base_url, headers)
-
-        if list_result == "Successful":
-            print(f"Successfully got file list for course {course_id}. Now downloading materials...")
-            # Download specific file types
-            gu.getCoursePPTXMaterial(course_id, headers)
-            gu.getCoursePDFMaterial(course_id, headers)
-            gu.getCourseDOCXMaterial(course_id, headers)
-            gu.getCourseTXTMaterial(course_id, headers)
-            self.weaviate_status_update.emit(f"File download complete for course ID: {course_id}.")
-            print(f"Finished attempting to download materials for course {course_id}.")
-
-            # --- Weaviate operations ---        
-            self._ingest_course_data_threaded(course_id)
-            
-        else:
-            self.weaviate_status_update.emit(f"Failed to get file list for course {course_id}. Skipping downloads and Weaviate.")
-            print(f"Failed to get file list for course {course_id}. Skipping material download and Weaviate ops.")
-
-        self.chat_screen.set_selected_course(course_data)
-        self.show_chat_screen()
+        
+        # Run the processing in a separate thread
+        thread = threading.Thread(
+            target=self._process_selected_course_thread_target,
+            args=(course_data, self.canvas_token, self.base_url),
+            daemon=True
+        )
+        thread.start()
     
     def handle_user_message(self): 
         user_text = self.chat_screen.user_input.text().strip()
@@ -727,3 +711,53 @@ class MainWindow(QMainWindow):
         if self.status_bar:
             self.status_bar.showMessage(message, 7000) # Show message for 7 seconds 
             print(f"[STATUS_BAR] {message}")
+            
+    def _process_selected_course_thread_target(self, course_data: dict, canvas_token: str, base_url: str):
+        """
+        This function runs in a worker thread to handle file listing, downloading,
+        and triggering Weaviate ingestion for a selected course.
+        """
+        course_id = course_data.get("id")
+        course_name = course_data.get("name", "Unknown Course")
+
+        if course_id is None:
+            self.weaviate_status_update.emit(f"Error: Course ID missing for {course_name}.")
+            print(f"Error: Course ID is missing for {course_name}. Cannot fetch materials.")
+            # Optionally emit a signal to re-enable UI or show error
+            return
+
+        headers = {"Authorization": f"Bearer {canvas_token}"}
+
+        self.weaviate_status_update.emit(f"Fetching file list for {course_name}...")
+        print(f"Fetching file list for course ID: {course_id}...")
+        list_result = gu.listCourseMaterial(course_id, base_url, headers)
+
+        if list_result == "Successful":
+            self.weaviate_status_update.emit(f"Downloading materials for {course_name}...")
+            print(f"Successfully got file list for course {course_id}. Now downloading materials...")
+            gu.getCoursePPTXMaterial(course_id, headers)
+            gu.getCoursePDFMaterial(course_id, headers)
+            gu.getCourseDOCXMaterial(course_id, headers)
+            gu.getCourseTXTMaterial(course_id, headers)
+            self.weaviate_status_update.emit(f"Downloads complete for {course_name}.")
+            print(f"Finished attempting to download materials for course {course_id}.")
+
+            # Trigger Weaviate ingestion 
+            self._ingest_course_data_threaded(course_id)
+        else:
+            self.weaviate_status_update.emit(f"Failed to get file list for {course_name}. Skipping downloads & ingestion.")
+            print(f"Failed to get file list for course {course_id}. Skipping material download and Weaviate ops.")
+        
+        self.course_processing_finished_signal.emit(course_data)
+        
+    def _on_course_processing_finished(self, course_data: dict):
+        """
+        This slot is called when the course processing thread is finished.
+        It handles the UI transition to the chat screen.
+        """
+        course_name = course_data.get("name", "Unknown Course")
+        print(f"Finished processing for course: {course_name}. Switching to chat screen.")
+        self.weaviate_status_update.emit(f"Ready to chat for course: {course_name}.")
+        
+        self.chat_screen.set_selected_course(course_data)
+        self.show_chat_screen()
