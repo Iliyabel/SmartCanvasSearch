@@ -35,7 +35,19 @@
   </p>
 </div>
 
-## Overview
+<details>
+<summary>Table of Contents</summary>
+
+* [✨ Features](#features)
+* [🛠️ Technologies Used](#technologies-used)
+* [Project Structure](#project-structure)
+* [Installation](#installation)
+* [Configuration](#configuration)
+* [Usage](#usage)
+* [Troubleshooting](#troubleshooting)
+</details>
+
+## ℹ️ Overview
 
 <img src="readmeAssets/demo.png" alt="Logo" >
 
@@ -43,17 +55,9 @@ Course Compass is a locally run Python RAG application designed to enhance your 
 
 This application is intended for local use, allowing you to process and search your Canvas files without relying on external cloud services for core functionality.
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Table of Contents
-* [Features](#features)
-* [Technologies Used](#technologies-used)
-* [Project Structure](#project-structure)
-* [Installation](#installation)
-* [Configuration](#configuration)
-* [Usage](#usage)
-* [Troubleshooting](#troubleshooting)
-
-## Features
+## ✨ Features
 
 *   **Graphical User Interface:** Built with PyQt6, providing screens for API token input course selection, and an interactive chat interface for querying.
 *   **Canvas Integration:**
@@ -77,8 +81,9 @@ This application is intended for local use, allowing you to process and search y
     *   Checks for existing data in Weaviate to avoid redundant processing and chunking.
     *   Uses threading for background tasks (Weaviate initialization, file downloads, AI queries) to keep the GUI responsive.
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Technologies Used
+## 🛠️ Technologies Used
 
 *   **Python 3.x**
 *   **GUI:**
@@ -103,7 +108,9 @@ This application is intended for local use, allowing you to process and search y
 *   **Containerization:**
     *   Docker & Docker Compose (for Weaviate service)
 
-## Project Structure
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## 🧱 Project Structure
 ```
 SmartCanvasSearch/
 ├── Courses/                  # Downloaded course files (organized by course ID)
@@ -128,16 +135,21 @@ SmartCanvasSearch/
 └── README.md                 # This file
 ```
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ### Architecture
 
 ![Architecture Diagram](readmeAssets/architecture.png)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### RAG Data Flow
 
 ![Architecture Diagram](readmeAssets/ragDiagram.png)
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Installation
+## 📌 Installation
 
 1.  **Prerequisites:**
     *   Python 3.9+
@@ -161,7 +173,9 @@ SmartCanvasSearch/
     pip install -r requirements.txt
     ```
 
-## Configuration
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## ⚙️ Configuration
 
 1.  **Create a `.env` file** in the project root (`SmartCanvasSearch/`) with the following content:
     ```env
@@ -184,6 +198,8 @@ SmartCanvasSearch/
         8.  Click **Generate Token**.
         9.  **Important:** Copy the generated token immediately. You won't be able to see it again.
     *   The application will save this token to `resources/canvas_token.txt` for future sessions.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Usage
 
@@ -214,6 +230,8 @@ SmartCanvasSearch/
     *   Type your questions about the course materials in the input field and press Enter or click "Send".
     *   The application will search the relevant documents and use Gemini AI to provide an answer with source citations.
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## Troubleshooting
 
 *   **Docker/Weaviate Issues:**
@@ -228,3 +246,5 @@ SmartCanvasSearch/
     *   Check your Google AI Studio dashboard for API usage and potential issues.
 *   **"Stylesheet not found"**: Ensure `resources/styles.css` exists in the project structure.
 *   **"NLTK 'punkt' tokenizer not found"**: Run `python -m nltk.downloader punkt` if the automatic download fails.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
