@@ -1,6 +1,43 @@
-# Course Compass
+<a id="readme-top"></a>
+<div align="center">
+
+![Python](https://img.shields.io/badge/Python-3.x-blue.svg?style=flat-square&logo=python&logoColor=white)
+![Static Badge](https://img.shields.io/badge/PyQt6-GUI-green.svg?style=flat-square&logo=qt&logoColor=white)
+![Sentence Transformers](https://img.shields.io/badge/Sentence_Transformers-Embeddings-orange.svg?style=flat-square)
+![NLTK](https://img.shields.io/badge/NLTK-NLP-blueviolet.svg?style=flat-square)
+
+
+![Weaviate](https://img.shields.io/badge/Weaviate-Vector_DB-red.svg?style=flat-square&logo=weaviate&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/Google_Gemini-AI-purple.svg?style=flat-square&logo=google%20gemini&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Containerization-blue.svg?style=flat-square&logo=docker&logoColor=white)
+![Docker Compose](https://img.shields.io/badge/Docker_Compose-Orchestration-blue.svg?style=flat-square&logo=docker&logoColor=white)
+
+
+</div>
+
+<br />
+<br />
+
+<br />
+<div align="center">
+  <a href="https://github.com/iliyabel">
+    <img src="readmeAssets/icon.png" alt="Logo" width="auto" height="100">
+  </a>
+
+<h3 align="center">Course Compass<br>A Canvas Assistant</h3>
+
+  <p align="center">
+    AI-powered course assistant that runs locally. Upload course files, ask questions, and get answers through a chatbot interface.
+    <br />
+    <a href="https://github.com/Iliyabel/SmartCanvasSearch"><strong>Explore the docs »</strong></a>
+    <br />
+    <br />
+  </p>
+</div>
 
 ## Overview
+
+<img src="readmeAssets/demo.png" alt="Logo" >
 
 Course Compass is a locally run Python RAG application designed to enhance your learning experience by enabling you to search through your Canvas course files using natural language queries. It leverages natural language processing (NLP) techniques, including semantic text chunking, embedding generation, and hybrid search, to provide accurate and relevant search results.
 
@@ -90,6 +127,14 @@ SmartCanvasSearch/
 ├── requirements.txt          # Python dependencies
 └── README.md                 # This file
 ```
+
+### Architecture
+
+![Architecture Diagram](readmeAssets/architecture.png)
+
+### RAG Data Flow
+
+![Architecture Diagram](readmeAssets/ragDiagram.png)
 
 
 ## Installation
